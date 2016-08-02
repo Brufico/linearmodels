@@ -1,17 +1,18 @@
 #' ---
-#' title: "Exploration de 'mtcars"
-#' subtitle: "pour le module linear models"
-#' author: "Bruno Fischer"
+#' title: "Linear Models"
+#' subtitle: "Project1.R"
+#' author: "Bruno Fischer Colonimos"
 #' date: '`r format(Sys.Date(), "%d %B %Y")`'
 #' output:
 #'         html_document:
 #'                 theme: readable
+#'                 number_sections: yes
 #'         word_document:
 #'              fig_caption: yes
 #'              fig_width: 9
 #'              toc: no
-#' number_sections: yes
-#' theme: readable
+#'              number_sections: yes
+#'              theme: readable
 #' ---
 
 
