@@ -16,13 +16,19 @@
 #' ---
 
 
-# libraries
+#+ options
+knitr::opts_chunk$set(echo = FALSE)
+
+
+#' libraries + external code
+#' =========================
+
+#+ libraries, warnings = FALSE
+
 library(dplyr)
 require(graphics)
 library(GGally)
 library(ggplot2)
-
-# load C:\Users\Bruno\SkyDrive\Documents\R\linearmodels\morecode\multiplot
 
 source(file.path("morecode", "multiplot", "multiplot.R"))
 
@@ -47,43 +53,44 @@ source(file.path("morecode", "multiplot", "multiplot.R"))
 
 
 data("mtcars")
-# head(mtcars)
 
 
 #' Data exploration
 #' ----------------
 
-# pairs(mtcars, main = "mtcars data")
-# coplot(mpg ~ disp | as.factor(am), data = mtcars,
-#        panel = panel.smooth, rows = 1)
-#
-# coplot(mpg ~ wt | as.factor(am), data = mtcars,
-#        panel = panel.smooth, rows = 1)
-#
-# coplot(mpg ~ hp | as.factor(am), data = mtcars,
-#        panel = panel.smooth, rows = 1)
-#
-# coplot(mpg ~ drat | as.factor(am), data = mtcars,
-#        panel = panel.smooth, rows = 1)
-#
+
+# faceted histograms
+# k <- nclass.FD(mtcars$mpg)
+# ghist <- ggplot(mtcars, aes(mpg, fill = factor(am))) +
+#         geom_histogram(bins = k) +
+#         scale_fill_discrete("am") +
+#         facet_grid(am ~.)
+# ghist
 
 
-# help(package="GGally")
-# windows()
-# ggpairs(mtcars,
-#         lower = list(continuous = "smooth"))
-# dev.off()
+# freq polygons
+gpoly <- ggplot(mtcars, aes(mpg, y = ..density..,
+                            color = factor(am))) +
+        geom_freqpoly(bins = 16) +
+        scale_color_discrete("am") +
+        scale_x_continuous(limits = c(5, 40))
+# gpoly
 
-# colnames(mtcars)
 
-# plot histograms
-k <- nclass.FD(mtcars$mpg)
+# boxplots
+gbox <- ggplot(mtcars, aes(factor(am), mpg, color=factor(am))) +
+        geom_boxplot() +
+        # labs(x= "am\ - ") +
+        scale_x_discrete("am",labels = c("0.00", "1.00")) +
+        scale_y_continuous(limits = c(5, 40)) +
+        scale_color_discrete("am") +
+        coord_flip()
+# gbox
 
-g <- ggplot(mtcars, aes(mpg, fill = factor(am))) +
-        geom_histogram(bins = k) +
-        scale_fill_discrete("am") +
-        facet_grid(am ~.)
-g
+# show freq polygons and boxplot
+multiplot(gpoly, gbox, layout= matrix(c(1,2), nrow = 2))
+
+
 
 
 # plotting the effect of every variable on mpg, contrasting
@@ -100,6 +107,7 @@ plotam <- function(varname) {
                             method="lm", se= FALSE) +
                 geom_smooth(data = filter(mtcars, am ==1),
                             method="lm", se= FALSE) +
+                # guides(color="none")
                 scale_color_discrete(guide_legend("am"))
 }
 
@@ -117,6 +125,232 @@ multiplot(plotlist = lpl, cols = 3)
 dev.off
 
 
+
+
+#' model selection
+#' ===============
+
+#' Attempt one; backwards elimination (without interaction)
+#' --------------------------------------------------------
+
+#' principle : start with a model with all variables, then
+#' remove one by one the variable whith a coefficient not
+#' significantly different from zero, starting with the
+#' highest p-values.
+#'
+#' Here we get: mpg ~ am + wt + qsec
+#' ()
+
+# start
+
+# first iteration
+fit <- lm(mpg ~ carb + hp + disp + cyl + wt + gear + am + drat + vs + qsec, mtcars)
+
+nextstep <- function(fit) {
+sf <-  summary(fit)
+sfc <- summary(fit)$coef
+rnames <- dimnames(sfc)[[1]]
+ix <- match(max(sfc[,4] ), sfc[,4] )
+
+# print
+if (sfc[ix,4] > 0.05) {
+        cat(paste("Least significant variable :", rnames[ix],
+                  "; p-value =", round(sfc[ix, 4], 3),
+                  "R²adj = ", sf$adj.r.squared ))
+} else {
+        cat(paste("All variables are significant", formula(fit), "\n",
+                  "sigma = ", sf$sigma,
+                  "Rsquared",  sf$r.squared,
+                  "Adj.Rsquared", sf$adj.r.squared))
+}
+}
+
+nextstep(fit)
+
+# removing cyl
+fit <- lm(mpg ~ carb + hp + disp + wt + gear + am + drat + vs + qsec, mtcars)
+nextstep(fit)
+
+# removing vs
+fit <- lm(mpg ~ carb + hp + disp + wt + gear + am + drat + qsec, mtcars)
+nextstep(fit)
+
+# removing carb
+fit <- lm(mpg ~ hp + disp + wt + gear + am + drat + qsec, mtcars)
+nextstep(fit)
+
+# removing gear
+fit <- lm(mpg ~ hp + disp + wt + am + drat + qsec, mtcars)
+nextstep(fit)
+
+# removing drat
+fit <- lm(mpg ~ hp + disp + wt + am + qsec, mtcars)
+nextstep(fit)
+
+# removing disp
+fit <- lm(mpg ~ hp + wt + am + qsec, mtcars)
+nextstep(fit)
+
+# removing hp final step
+fit <- lm(mpg ~ wt + am + qsec, mtcars)
+nextstep(fit)
+s <- summary(fit)
+s
+# All significants
+s$sigma
+s$r.squared
+s$adj.r.squared
+
+
+# try without intercept
+fit <- lm(mpg ~ wt + am + qsec - 1, mtcars)
+nextstep(fit)
+s <- summary(fit)
+s
+# All significants
+s$sigma
+s$r.squared
+s$adj.r.squared
+
+
+#' diagnostics
+#' ------------
+
+windows()
+
+pr <- par("mfrow")
+par(mfrow=c(2,2))
+plot(fit)
+par(mfrow=pr)
+
+dev.off()
+
+# residuals plots
+
+vnames <- c("wt", "am", "qsec") # variables in the final model
+
+# rstudent(fit) # try
+
+
+# Store residuals
+mtcars <- mutate(mtcars, resid1 = rstudent(fit))
+
+
+resvarplot <- function(varname) {
+        ggplot(mtcars, aes_(as.name(varname) , quote(resid1))) +
+                geom_point()
+}
+
+lpres <- lapply(vnames, FUN=resvarplot)
+
+windows()
+multiplot(plotlist = lpres,
+          #ncols=3
+          layout = matrix(c(1,2,3), nrow=1)
+)
+dev.off()
+
+
+
+
+#' Second Attempt ; forward selection (without interaction)
+#' --------------------------------------------------------
+#' start with mpg ~ am and add one by one new variables in
+#' order to improve the model. All coefficients must be
+#' significant, and adjusted R2 should inrease at each step.
+#' One can verify the improvement with an ANOVA on the
+#' nested models
+
+
+# evaluate fit
+showfit <- function(fit, complete = FALSE) {
+        s <- summary(fit)
+        mes <- c ( s$r.squared, s$sigma, s$adj.r.squared)
+        names(mes) <- c( "r²", "sigma", "adj.r²")
+        if (complete) {list(mes, s$coef)
+        } else {s$adj.r.squared
+                }
+}
+
+
+fit <- lm(mpg ~ am, data = mtcars)
+showfit(fit, complete = TRUE)
+
+
+allvars <- c( "cyl","disp", "hp", "drat", "wt",
+              "qsec", "vs", "am", "gear","carb")
+
+
+baseformula <- "mpg ~ am"
+tryfit <- function(varname){
+        showfit(lm(paste(baseformula, "+", varname),
+                   data = mtcars))
+}
+
+showfit(lm(baseformula, mtcars), complete = TRUE)
+
+
+
+
+# first iteration
+addval <- sapply(X = allvars, FUN=tryfit)
+newvar <- names(addval)[match(max(addval), addval)] # ==> hp
+
+baseformula <- paste(baseformula, "+", newvar)
+allvars <- setdiff(allvars, newvar)
+
+baseformula
+allvars
+
+showfit(lm(baseformula, mtcars), complete = TRUE)
+
+
+
+# iteration 2
+
+addval <- sapply(X = allvars, FUN=tryfit)
+newvar <- names(addval)[match(max(addval), addval)] # ==> hp
+
+baseformula <- paste(baseformula, "+", newvar)
+allvars <- setdiff(allvars, newvar)
+
+baseformula
+allvars
+
+showfit(lm(baseformula, mtcars), complete = TRUE)
+
+
+
+
+# iteration 3
+
+addval <- sapply(X = allvars, FUN=tryfit)
+newvar <- names(addval)[match(max(addval), addval)] # ==> hp
+
+baseformula <- paste(baseformula, "+", newvar)
+allvars <- setdiff(allvars, newvar)
+
+baseformula # with added qsec.
+allvars
+
+summary(lm(baseformula, mtcars))$coef
+showfit(lm(baseformula, mtcars), complete = TRUE)
+
+# both coefficients of hp and qs become not significantly
+# differents from zero
+
+
+
+
+
+
+
+
+
+
+
+
+# ======================================================================
 
 
 #' correlations
@@ -202,23 +436,26 @@ vnames <- c("wt", "am", "qsec") # variables in the final model
 mtcars <- mutate(mtcars, resid1 = rstudent(fit))
 
 
-resvarplot <- function(varname) {
-        ggplot(mtcars, aes_(as.name(varname) , quote(resid1))) +
-                geom_point()
+resvarplot <- function(varname, residvar = "resid1") {
+        ggplot(mtcars, aes_(as.name(varname) , as.name(residvar))) +
+                geom_point()+
+                geom_smooth()
 }
+
 # resvarplot("wt")
 # resvarplot("am")
 # resvarplot("qsec")
 
 lpres <- lapply(vnames, FUN=resvarplot)
+windows(width=10)
 multiplot(plotlist = lpres,
           #ncols=3
           layout = matrix(c(1,2,3), nrow=1)
           )
-
+dev.off()
 
 #' what about a different model with hp instead of qsec
-#' --------------------------------------------------------
+#' -----------------------------------------------------
 
 
 fit <- lm(mpg ~ wt + am + hp, mtcars)
