@@ -26,11 +26,13 @@ knitr::opts_chunk$set(echo = FALSE)
 #+ libraries, warnings = FALSE
 
 library(dplyr)
-require(graphics)
-library(GGally)
+# require(graphics)
+# library(GGally)
 library(ggplot2)
+library(grid)
+library(gridExtra)
 
-source(file.path("morecode", "multiplot", "multiplot.R"))
+# source(file.path("morecode", "multiplot", "multiplot.R"))
 
 
 
@@ -73,7 +75,8 @@ gpoly <- ggplot(mtcars, aes(mpg, y = ..density..,
                             color = factor(am))) +
         geom_freqpoly(bins = 16) +
         scale_color_discrete("am") +
-        scale_x_continuous(limits = c(5, 40))
+        scale_x_continuous(limits = c(5, 40)) +
+        xlab(NULL)
 # gpoly
 
 
@@ -84,16 +87,36 @@ gbox <- ggplot(mtcars, aes(factor(am), mpg, color=factor(am))) +
         scale_x_discrete("am",labels = c("0.00", "1.00")) +
         scale_y_continuous(limits = c(5, 40)) +
         scale_color_discrete("am") +
+        ylab(NULL)+
         coord_flip()
 # gbox
 
 # show freq polygons and boxplot
-multiplot(gpoly, gbox, layout= matrix(c(1,2), nrow = 2))
+# multiplot(gpoly, gbox, layout= matrix(c(1,2), nrow = 2))
+
+
+# try variants
+# g <- grid.arrange(grobs=list(gpoly, gbox), layout= matrix(c(1,2), nrow = 2) ,
+#                   top = "Automatic vs manual gearbox mpg distributions",
+#                   bottom = "mpg")
+# draws directly the plots
 
 
 
+# remark: with the bold title, this is very slow
+# bold title
+title1 <- textGrob("Automatic vs manual gearbox mpg distributions",
+                gp=gpar(fontface="bold"))
 
-# plotting the effect of every variable on mpg, contrasting
+gr <- arrangeGrob(grobs=list(gpoly, gbox),
+                  layout_matrix = matrix(c(1,2), nrow = 2) ,
+                  top = title1,
+                  bottom = "mpg")
+# stores in gr use then grid.graw(gr)
+grid.draw(gr)
+
+
+# plotting the effect of every variable on mpg, conmparing
 # autimatic and manual transmissions
 
 # plotting function
@@ -107,6 +130,7 @@ plotam <- function(varname) {
                             method="lm", se= FALSE) +
                 geom_smooth(data = filter(mtcars, am ==1),
                             method="lm", se= FALSE) +
+                ylab(NULL) +
                 # guides(color="none")
                 scale_color_discrete(guide_legend("am"))
 }
@@ -120,9 +144,19 @@ lpl <- lapply(X = setdiff(colnames(mtcars), c("am", "mpg")),
               plotam)
 
 # display plots
+# windows(width = 10, height = 6)
+# multiplot(plotlist = lpl, cols = 3)
+# dev.off
+
+# Alternative
 windows(width = 10, height = 6)
-multiplot(plotlist = lpl, cols = 3)
-dev.off
+title2 <- textGrob("Automatic vs manual:  mpg regressions",
+                   gp=gpar(fontface="bold"))
+
+gg <- arrangeGrob(grobs=lpl, layout_matrix = matrix(c(1,2), nrow = 2) ,
+                  top = title2, left = "mpg")
+grid.draw(gg)
+dev.off()
 
 
 
@@ -146,24 +180,36 @@ dev.off
 # first iteration
 fit <- lm(mpg ~ carb + hp + disp + cyl + wt + gear + am + drat + vs + qsec, mtcars)
 
-nextstep <- function(fit) {
-sf <-  summary(fit)
-sfc <- summary(fit)$coef
-rnames <- dimnames(sfc)[[1]]
-ix <- match(max(sfc[,4] ), sfc[,4] )
 
-# print
-if (sfc[ix,4] > 0.05) {
-        cat(paste("Least significant variable :", rnames[ix],
-                  "; p-value =", round(sfc[ix, 4], 3),
-                  "R²adj = ", sf$adj.r.squared ))
-} else {
-        cat(paste("All variables are significant", formula(fit), "\n",
-                  "sigma = ", sf$sigma,
-                  "Rsquared",  sf$r.squared,
-                  "Adj.Rsquared", sf$adj.r.squared))
+nextstep <- function(fit) {
+        sf <-  summary(fit)
+        sfc <- summary(fit)$coef[-1,]
+        rnames <- dimnames(sfc)[[1]]
+        ix <- match(max(sfc[,4] ), sfc[,4] )
+        # formula
+        fitfla <- formula(fit)
+        cfla <- as.character(fitfla)
+        cfla <- paste(cfla[2], cfla[1], cfla[3])
+
+        # print(ix)
+        # result
+        if (sfc[ix,4] > 0.05) {
+                data.frame(nonsignif.var = rnames[ix],
+                           p.value =  round(sfc[ix, 4], 3),
+                           sigma = sf$sigma,
+                           Rsquared =  sf$r.squared,
+                           Adj.Rsquared = sf$adj.r.squared)
+        } else {
+                data.frame(nonsignif.var = "all significant",
+                           formula = cfla,
+                           sigma = sf$sigma,
+                           Rsquared =  sf$r.squared,
+                           Adj.Rsquared = sf$adj.r.squared)
+        }
 }
-}
+
+
+
 
 nextstep(fit)
 
@@ -197,20 +243,9 @@ nextstep(fit)
 s <- summary(fit)
 s
 # All significants
-s$sigma
-s$r.squared
-s$adj.r.squared
-
-
-# try without intercept
-fit <- lm(mpg ~ wt + am + qsec - 1, mtcars)
-nextstep(fit)
-s <- summary(fit)
-s
-# All significants
-s$sigma
-s$r.squared
-s$adj.r.squared
+# s$sigma
+# s$r.squared
+# s$adj.r.squared
 
 
 #' diagnostics
@@ -222,7 +257,6 @@ pr <- par("mfrow")
 par(mfrow=c(2,2))
 plot(fit)
 par(mfrow=pr)
-
 dev.off()
 
 # residuals plots
@@ -233,22 +267,37 @@ vnames <- c("wt", "am", "qsec") # variables in the final model
 
 
 # Store residuals
-mtcars <- mutate(mtcars, resid1 = rstudent(fit))
+mtcars1 <- mutate(mtcars, resid1 = rstudent(fit))
 
 
 resvarplot <- function(varname) {
-        ggplot(mtcars, aes_(as.name(varname) , quote(resid1))) +
-                geom_point()
+        ggplot(mtcars1, aes_(as.name(varname) , quote(resid1))) +
+                geom_point()+
+                geom_smooth()
 }
 
 lpres <- lapply(vnames, FUN=resvarplot)
 
-windows()
-multiplot(plotlist = lpres,
+# windows()
+# multiplot(plotlist = lpres,
+#           #ncols=3
+#           layout = matrix(c(1,2,3), nrow=1)
+# )
+# dev.off()
+
+windows(width = 10)
+gr <- arrangeGrob(grobs = lpres,
           #ncols=3
-          layout = matrix(c(1,2,3), nrow=1)
+          layout_matrix = matrix(c(1,2,3), nrow=1)
 )
+grid.draw(gr)
 dev.off()
+
+
+
+
+
+
 
 
 
@@ -341,6 +390,28 @@ showfit(lm(baseformula, mtcars), complete = TRUE)
 
 
 
+# getting rid of hp
+
+baseformula <- "mpg ~ am  + wt + qsec"
+allvars <- union(allvars, "hp")
+
+summary(lm(baseformula, mtcars))$coef
+showfit(lm(baseformula, mtcars), complete = TRUE)
+
+
+
+
+
+
+
+
+# ======================================================================
+
+Using ANOVA on the nested models
+
+
+
+
 
 
 
@@ -416,6 +487,7 @@ s$r.squared
 s$adj.r.squared
 
 
+
 #' diagnostics
 #' ------------
 
@@ -454,6 +526,9 @@ multiplot(plotlist = lpres,
           )
 dev.off()
 
+
+
+
 #' what about a different model with hp instead of qsec
 #' -----------------------------------------------------
 
@@ -465,6 +540,7 @@ s
 s$sigma
 s$r.squared
 s$adj.r.squared
+
 
 # with hp and interaction
 

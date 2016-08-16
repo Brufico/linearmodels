@@ -61,6 +61,14 @@ data("mtcars")
 #' Data exploration
 #' ----------------
 
+# means
+
+means <- mtcars %>%
+        group_by(am) %>%
+        summarise(meanmpg=mean(mpg))
+
+meanauto <- means[1,2]
+meanmanual <- means[2,2]
 
 # freq polygons
 gpoly <- ggplot(mtcars, aes(mpg, y = ..density..,
@@ -75,7 +83,6 @@ gpoly <- ggplot(mtcars, aes(mpg, y = ..density..,
 # boxplots
 gbox <- ggplot(mtcars, aes(factor(am), mpg, color=factor(am))) +
         geom_boxplot() +
-        # labs(x= "am\ - ") +
         scale_x_discrete("am",labels = c("0.00", "1.00")) +
         scale_y_continuous(limits = c(5, 40)) +
         scale_color_discrete("am") +
@@ -94,6 +101,7 @@ gr <- arrangeGrob(grobs=list(gpoly, gbox),
                   top = title1,
                   bottom = "mpg")
 # stores in gr use then grid.graw(gr)
+grid.newpage()
 grid.draw(gr)
 
 
@@ -133,7 +141,6 @@ lpl <- lapply(X = setdiff(colnames(mtcars), c("am", "mpg")),
 # display plots (with a common legend):
 
 # get the legend from any one plot (the plot must have a legend)
-
 # extract legend
 # https://github.com/hadley/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs
 g_legend<-function(a.gplot){
@@ -157,12 +164,9 @@ gg <- arrangeGrob(grobs = lpl,
 
 g3 <- arrangeGrob(gg,
                    mylegend, nrow=2, heights=c(10, 1))
-
+grid.newpage()
 grid.draw(g3)
 # dev.off()
-
-
-
 
 
 
@@ -186,7 +190,7 @@ grid.draw(g3)
 # first iteration
 fit <- lm(mpg ~ carb + hp + disp + cyl + wt + gear + am + drat + vs + qsec, mtcars)
 
-# testing function, not-really-so-good
+# testing function, not-really-so-great
 nextstep <- function(fit) {
         sf <-  summary(fit)
         sfc <- summary(fit)$coef[-1,]
@@ -196,8 +200,6 @@ nextstep <- function(fit) {
         fitfla <- formula(fit)
         cfla <- as.character(fitfla)
         cfla <- paste(cfla[2], cfla[1], cfla[3])
-
-        # print(ix)
         # result
         if (sfc[ix,4] > 0.05) {
                 data.frame(nonsignif.var = rnames[ix],
@@ -215,39 +217,94 @@ nextstep <- function(fit) {
 }
 
 
+# init
+i <- 1
+elim <-  numeric(0)
+
+step <- nextstep(fit)
+elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
+i <- i + 1
+# show essentials
+summary(fit)
+step
+elim
 
 
-nextstep(fit)
-
-# removing cyl
+# 2 removing cyl
 fit <- lm(mpg ~ carb + hp + disp + wt + gear + am + drat + vs + qsec, mtcars)
-nextstep(fit)
+step <- nextstep(fit)
+elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
+i <- i + 1
+# show essentials
+summary(fit)
+step
+elim
+
 
 # removing vs
 fit <- lm(mpg ~ carb + hp + disp + wt + gear + am + drat + qsec, mtcars)
-nextstep(fit)
+step <- nextstep(fit)
+elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
+i <- i + 1
+# show essentials
+summary(fit)
+step
+elim
+
 
 # removing carb
 fit <- lm(mpg ~ hp + disp + wt + gear + am + drat + qsec, mtcars)
-nextstep(fit)
+step <- nextstep(fit)
+elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
+i <- i + 1
+# show essentials
+summary(fit)
+step
+elim
+
 
 # removing gear
 fit <- lm(mpg ~ hp + disp + wt + am + drat + qsec, mtcars)
-nextstep(fit)
+step <- nextstep(fit)
+elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
+i <- i + 1
+# show essentials
+summary(fit)
+step
+elim
+
 
 # removing drat
 fit <- lm(mpg ~ hp + disp + wt + am + qsec, mtcars)
-nextstep(fit)
+step <- nextstep(fit)
+elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
+i <- i + 1
+# show essentials
+summary(fit)
+step
+elim
+
 
 # removing disp
 fit <- lm(mpg ~ hp + wt + am + qsec, mtcars)
-nextstep(fit)
+step <- nextstep(fit)
+elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
+i <- i + 1
+# show essentials
+summary(fit)
+step
+elim
 
 # removing hp final step
 fit <- lm(mpg ~ wt + am + qsec, mtcars)
-nextstep(fit)
-s <- summary(fit)
-s
+step <- nextstep(fit)
+elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
+i <- i + 1
+# show essentials
+summary(fit)
+step
+elim
+
 # All significants
 #   nonsignif.var              formula    sigma  Rsquared Adj.Rsquared
 # all significant mpg ~ wt + am + qsec 2.458846 0.8496636    0.8335561
@@ -259,7 +316,7 @@ s
 
 pr <- par("mfrow")
 par(mfrow=c(2,2))
-plot(fit)
+plot(fit, which = 1)
 par(mfrow=pr)
 dev.off()
 
@@ -295,13 +352,12 @@ fit2 <- lm(mpg ~ wt + am*wt + qsec, mtcars)
 s <- summary(fit2)
 s
 
-windows()
+
 pr <- par("mfrow")
 par(mfrow=c(2,2))
-plot(fit)
+plot(fit2, which = 4)
 par(mfrow=pr)
 
-dev.off()
 
 
 
@@ -337,17 +393,23 @@ pv <- an$`Pr(>F)`
 # pv[2]
 
 
-#' Conclusion: select : mpg ~ wt + am * wt + qsec
+
+
+
+#' We select : mpg ~ wt + am * wt + qsec
 #' ------------------------
 
 
-# diagnostics2
+
+
+#' diagnostics2
+#' ------------
 
 pr <- par("mfrow")
-par(mfrow=c(2,2))
-plot(fit2)
-par(mfrow=pr)
-
+par(mfrow=c(1,2))
+plot(fit2, which=4)
+plot(fit2, which=5)
+par(mfrow = pr)
 
 
 hatvalues(fit2)
@@ -355,10 +417,11 @@ dfb <- dfbetas(fit2)
 
 str(dfb)
 
-dfb[ , c("am", "wt:am")]
+dfb[ , c("wt"  , "am", "wt:am")]
 
+dfb[c("Fiat 128", "Maserati Bora" , "Chrysler Imperial" ) , c("wt"  , "am", "wt:am")]
 
-# ==> Try without Chrysler Imperial , Maserati Bora,
+# ==> Try without Chrysler Imperial , Maserati Bora, Fiat 128 (, model != "Fiat 128")
 
 mtcars2 <- mtcars
 mtcars2$model <- rownames(mtcars)
@@ -369,8 +432,9 @@ fit2B <- lm(mpg ~ wt + am*wt + qsec, mtcars2)
 s <- summary(fit2B)
 s
 
-
-
+par
+plot(fit2B, which = 4)
+plot(fit2B, which = 5)
 
 pr <- par("mfrow")
 par(mfrow=c(2,2))
@@ -385,12 +449,56 @@ dfb[ , c("am", "wt:am")]
 
 
 
+#' conclusion:
+#' -----------
+
+# Point estimation
+# neutral weight
+
+nwt <- - (sfc[3,1] / sfc[5,1])
+deltaslope <- sfc[5,1]
+
+
+sfc <- summary(fit2B)$coef
+sfc
+
+# 2 equations, automatic vs manual
+# automatic: mpg = 9.723 - 2.937 wt + 1.017 qs
+# manual : mpg = (9.723 + 14.079) - (2.937 + 7.078) wt + 1.017 qs
+
+# ==> for small wt, manual is better, for hign wt auto is better.
+# balance point, w = 3.4 (thousands of lb)
+# The manufactureres seem aware of it, as the overlap zone goes from circa
+
+mt24 <- filter(mtcars, wt > 2.5 & wt < 4.5)
+mt24a <- filter(mt24, am==0)
+mt24m <- filter(mt24, am==1)
+# ggplot(mt24, aes(wt, am))+ geom_point()
+min(mt24a$wt) # 3.15
+max(mt24m$wt) # 3.57
 
 
 
 
 
-# ======================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================================================================================
+# ===================================================================================================
 
 
 #' correlations
