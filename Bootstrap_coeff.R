@@ -53,7 +53,7 @@ g
 
 
 #'
-#' (@) Bootstrapping lor the difference of coefficients
+#' (@) Bootstrapping the difference of coefficients
 #' ====================================================
 #'
 
