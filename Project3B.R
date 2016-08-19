@@ -152,7 +152,7 @@ plotam <- function(varname, withlegend = FALSE) {
                             method="lm", se= FALSE) +
                 ylab(NULL) +
                 # scale_color_discrete(guide_legend("am")) +
-                theme(legend.position = "bottom")
+                theme(legend.position = "right")
         if (withlegend) {
                 g
         } else {
@@ -193,11 +193,11 @@ gg <- arrangeGrob(grobs = lpl,
                   top = title2,
                   left = "mpg")
 
-g3 <- arrangeGrob(gg,
-                   mylegend, nrow=2, heights=c(10, 1))
+slrg <- arrangeGrob(gg,
+                   mylegend, nrow=1, widths=c(10, 1))
 # to display
 
-displaygraph(g3, "win",
+displaygraph(slrg, "win",
              width = vlfigwidth,
              height = lfigheight)
 
@@ -342,34 +342,51 @@ remlist <- paste(sh, collapse = ", ")
 
 
 
+
 #' mpg ~ wt + am + qsec diagnostics
 #' --------------------------------
 
-plot(fit, which = 1)
+# plot(fit, which = 1)
 
 
 # residuals plots
-vnames <- c("wt", "am", "qsec") # variables in the final model
+# vnames <- c("wt", "am", "qsec") # variables in the final model
 
-# Store residuals
-mtcars1 <- mutate(mtcars, resid1 = rstudent(fit))
+# Store residuals and fitted values
+mtcars1 <- mutate(mtcars, resid1 = rstudent(fit),
+                  fitted.values = fitted.values(fit))
+
+
+# residuals plots
+# ---------------
+# variables in the final model
+vnames <- c("fitted.values", "wt", "am", "qsec")
+
 
 resvarplot <- function(varname) {
         ggplot(mtcars1, aes_(as.name(varname) , quote(resid1))) +
-                geom_point()+
-                geom_smooth()
+                geom_point() +
+                geom_smooth() +
+                scale_y_continuous(name = NULL)
 }
 
-lpres <- lapply(vnames, FUN=resvarplot)
+# test
+# resvarplot(varname = "wt")
+
+lpres1 <- lapply(vnames, FUN=resvarplot)
 
 
-windows(width = 10)
-gr <- arrangeGrob(grobs = lpres,
+gr1 <- arrangeGrob(grobs = lpres1,
           #ncols=3
-          layout_matrix = matrix(c(1,2,3), nrow=1)
-)
-grid.draw(gr)
-dev.off()
+          layout_matrix = matrix(c(1,2,3,4), nrow=1),
+          left = "residuals",
+          top = "model: mpg ~ wt + am + qsec (without interaction)"
+          )
+
+# to display
+displaygraph(gr1, "win", width = vlfigwidth,
+             height = sfigheight)
+
 
 
 
@@ -378,13 +395,50 @@ dev.off()
 
 fit2 <- lm(mpg ~ wt + am*wt + qsec, mtcars)
 s <- summary(fit2)
-s
+# s
 
 
-pr <- par("mfrow")
-par(mfrow=c(2,2))
-plot(fit2, which = 4)
-par(mfrow=pr)
+# pr <- par("mfrow")
+# par(mfrow=c(2,2))
+# plot(fit2, which = 4)
+# par(mfrow=pr)
+
+
+
+# Store residuals and fitted values
+mtcars2 <- mutate(mtcars, resid1 = rstudent(fit2),
+                  fitted.values = fitted.values(fit2))
+
+
+
+# residuals plots
+# ---------------
+# variables in the final model
+vnames <- c("fitted.values", "wt", "am", "qsec")
+
+
+
+resvarplot2 <- function(varname) {
+        ggplot(mtcars2, aes_(as.name(varname) , quote(resid1))) +
+                geom_point() +
+                geom_smooth() +
+                scale_y_continuous(name = NULL)
+}
+
+lpres2 <- lapply(vnames, FUN=resvarplot2)
+
+
+gr2 <- arrangeGrob(grobs = lpres2,
+                  #ncols=3
+                  layout_matrix = matrix(c(1,2,3,4), nrow=1),
+                  left = "residuals",
+                  top = "model: mpg ~ wt*am + qsec (with interaction)"
+)
+
+# to display
+displaygraph(gr2, "win", width = vlfigwidth,
+             height = sfigheight)
+
 
 
 
@@ -413,7 +467,7 @@ an
 #  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 # p-values
-pv <- an$`Pr(>F)`
+anpv <- an$`Pr(>F)`
 
 #  NA 0.002144762 0.675630240
 
@@ -425,49 +479,79 @@ pv <- an$`Pr(>F)`
 
 
 #' We select : mpg ~ wt + am * wt + qsec
-#' ------------------------
+#' -------------------------------------
 
 
 
 
-#' diagnostics2
-#' ------------
+#' diagnostics2: influential outliers
+#' ----------------------------------
 
+data(mtcars)
+mtcars2 <- mtcars
+mtcars2$model <- rownames(mtcars)
+rownames(mtcars2) <- mtcars2$model
+
+
+fit2A <- lm(mpg ~ wt + am*wt + qsec, mtcars2)
+s <- summary(fit2A)
+# s
+
+windows(width = vlfigwidth, height = sfigheight)
+pr <- c(1,1)
 pr <- par("mfrow")
-par(mfrow=c(1,2))
-plot(fit2, which=4)
-plot(fit2, which=5)
+par(mfrow = c(1,3))
+plot(fit2A, which = 4) # , ylim = c(0, .25) #???
+plot(fit2A, which = 5)
+plot(fit2A, which = 6)
 par(mfrow = pr)
 
+dev.off()
 
-hatvalues(fit2)
-dfb <- dfbetas(fit2)
 
-str(dfb)
+
+# hatvalues and dfbetas
+hatvalues(fit2A)
+dfb <- dfbetas(fit2A)
+
 
 dfb[ , c("wt"  , "am", "wt:am")]
 
 dfb[c("Fiat 128", "Maserati Bora" , "Chrysler Imperial" ) , c("wt"  , "am", "wt:am")]
 
+
+
 # ==> Try without Chrysler Imperial , Maserati Bora
 
-mtcars2 <- mtcars
-mtcars2$model <- rownames(mtcars)
-mtcars2 <- filter(mtcars2, model != "Chrysler Imperial", model != "Maserati Bora")
-rownames(mtcars2) <- mtcars2$model
+# data(mtcars)
+# mtcars2 <- mtcars
+# mtcars2$model <- rownames(mtcars)
+#
 
-fit2B <- lm(mpg ~ wt + am*wt + qsec, mtcars2)
+mtcars2B <- filter(mtcars2, model != "Chrysler Imperial", model != "Maserati Bora")
+rownames(mtcars2B) <- mtcars2B$model
+
+fit2B <- lm(mpg ~ am*wt + qsec, mtcars2B)
 s <- summary(fit2B)
 s
 
+
+windows(width = vlfigwidth, height = sfigheight)
+
 pr <- par("mfrow")
-par(mfrow=c(1,2))
+par(mfrow=c(1,3))
 plot(fit2B, which = 4)
 plot(fit2B, which = 5)
+plot(fit2B, which = 6)
 par(mfrow=pr)
 
+dev.off()
 
-
+# fixing ylim
+# plotlm <- stats:::plot.lm
+#
+# fix("plotlm")
+#  ===> to be done ??
 
 
 hatvalues(fit2B)
@@ -480,15 +564,16 @@ dfb[ , c("am", "wt:am")]
 #' conclusion:
 #' -----------
 
+s <- summary(fit2B)
+sfc <- s$coefficients
+sfc
+
 # Point estimation
 # neutral weight
 
-nwt <- - (sfc[3,1] / sfc[5,1])
+nwt <- - (sfc[2,1] / sfc[5,1])
 deltaslope <- sfc[5,1]
 
-
-sfc <- summary(fit2B)$coef
-sfc
 
 # 2 equations, automatic vs manual
 # automatic: mpg = 9.723 - 2.937 wt + 1.017 qs
@@ -513,7 +598,7 @@ max(mt24m$wt) # 3.57
 #' ------------------------------------------------
 #'
 
-data(mtcars)
+data(mtcars2B)
 
 # first: estimate the model from lm
 fit <- lm(mpg ~  qsec + wt*am, mtcars)
@@ -540,7 +625,7 @@ lsamp <- lapply(1:B, function(i) sample(1:n, n, replace = TRUE))
 
 getcoeffs <- function(x){
         # sample data
-        sdata <- mtcars[x,]
+        sdata <- mtcars2B[x,]
         # compute model
         fit <- lm(mpg ~  hp + wt*am, sdata)
         sc <- summary(fit)$coef
@@ -645,247 +730,3 @@ multiplot(plotlist = lpres,
           )
 dev.off()
 
-
-
-
-#' what about a different model with hp instead of qsec
-#' -----------------------------------------------------
-
-
-fit <- lm(mpg ~ wt + am + hp, mtcars)
-s <- summary(fit)
-s
-# All significants
-s$sigma
-s$r.squared
-s$adj.r.squared
-
-
-# with hp and interaction
-
-fit <- lm(mpg ~  am + hp + wt*am, mtcars)
-s <- summary(fit)
-s
-# All significants
-s$sigma
-s$r.squared
-s$adj.r.squared
-
-# diagnostics
-windows()
-pr <- par("mfrow")
-par(mfrow=c(2,2))
-plot(fit)
-
-par(mfrow = pr)
-dev.off()
-
-# SAME WITHOUR MASERATI bORA
-
-rownames(mtcars)
-mtcars <- mutate(mtcars, modname = rownames(mtcars))
-
-mtcars2 <- filter(mtcars, modname != "Maserati Bora")
-
-
-fit <- lm(mpg ~  am + hp + wt*am, mtcars2)
-s <- summary(fit)
-s
-# All significants
-s$sigma
-s$r.squared
-s$adj.r.squared
-
-# diagnostics
-windows()
-pr <- par("mfrow")
-par(mfrow=c(2,2))
-plot(fit)
-
-par(mfrow=pr)
-dev.off()
-
-
-
-
-vnames2 <- c("wt", "am", "hp") # variables in the final model
-# Store residuals2
-mtcars <- mutate(mtcars, resid2 = rstudent(fit))
-
-
-resvarplot2 <- function(varname) {
-        ggplot(mtcars, aes_(as.name(varname) , quote(resid2))) +
-                geom_point()
-}
-
-
-lpres2 <- lapply(vnames2, FUN=resvarplot2)
-multiplot(plotlist = lpres, ncols=3)
-windows(width = 10)
-multiplot(plotlist = lpres2,
-          layout=matrix(c(1,2,3), nrow=1, byrow=TRUE))
-dev.off()
-
-
-# qqnorm(mtcars$resid1)
-# qqnorm(mtcars$resid2)
-
-ggplot(mtcars) + geom_qq(aes(sample = resid1))
-ggplot(mtcars) + geom_qq(aes(sample = resid2))
-
-ggplot(mtcars, aes(sample = resid1)) + stat_qq()
-ggplot(mtcars, aes(sample = resid2)) + stat_qq()
-
-
-
-ggplot(mtcars, aes(x= resid1)) +
-        geom_histogram(bins=nclass.FD(mtcars$resid1))
-
-
-ggplot(mtcars, aes(x= resid2)) +
-        geom_histogram(bins=nclass.FD(mtcars$resid2))
-
-
-
-
-#' correlations
-#' -------------
-
-
-# select(mtcars, one_of(vnames))
-# cor(mtcars[vnames], select(mtcars, -one_of(names)))
-
-
-
-# redv <- mtcars[c("mpg", vnames)]
-
-heatmap(cor(mtcars[c("mpg", vnames)]),
-        col=colorRampPalette(c("blue","white", "red"))( 20 ))
-
-cor(mtcars[vnames])
-
-heatmap(cor(mtcars[vnames])
-        , col=colorRampPalette(c("blue","white", "red"))( 50 )
-        #, zlim=c(-1.05, 1.05),
-        , symm = TRUE
-        )
-
-
-heatmap(cor(mtcars[vnames2])
-        , col=colorRampPalette(c("blue","white", "red"))( 50 )
-        #, zlim=c(-1.05, 1.05),
-        , symm = TRUE
-)
-
-
-# Correlations between variables inside the models and
-# variables left out
-cor(select(mtcars, one_of(vnames)),
-    select(mtcars, - one_of(c(vnames, "mpg", 'modname'))))
-# corresponding heatmap (blue = negative, red = positive)
-heatmap(cor(mtcars[vnames],
-            select(mtcars, -one_of(c(vnames, "mpg", "modname")))),
-        col=colorRampPalette(c("blue","white", "red"))( 100 )
-        #, zlim=c(-1, 1)
-        )
-
-
-cor(mtcars[vnames2],
-    select(mtcars, -one_of(c(vnames2, "mpg", "resid1", "resid2", "modname"))))
-heatmap(cor(mtcars[vnames2],
-            select(mtcars, -one_of(c(vnames2, "mpg", "resid1", "resid2", "modname")))),
-        col=colorRampPalette(c("blue","white", "red"))( 100 )
-        # , zlim=c(-.9, .9)
-)
-
-
-
-# nested models
-
-fit1 <- lm(mpg ~ am, mtcars)
-fit2 <- lm(mpg ~ am + wt , mtcars)
-fit3 <- lm(mpg ~ am + wt + qsec, mtcars)
-anova(fit1,fit2,fit3)
-
-fit4 <- lm(mpg ~ am + wt + qsec + hp, mtcars)
-anova(fit3, fit4)
-# ==> the addition of hp is not justified
-
-fit5 <- lm(mpg ~ am + wt + qsec + disp, mtcars)
-anova(fit3, fit5)
-# ==> the addition of disp is not justified
-
-fit3B <- lm(mpg ~ am + wt + qsec + wt*am, mtcars)
-anova(fit3, fit3B)
-
-summary(fit3)
-summary(fit3B)
-
-
-
-# nested models B
-
-fitB1 <- lm(mpg ~ am, mtcars)
-fitB2 <- lm(mpg ~ am + wt , mtcars)
-fitB2B <- lm(mpg ~ am + wt*am , mtcars)
-
-anova(fitB1,fitB2, fitB2B) # justified
-fitB3B <- lm(mpg ~ am + wt*am + qsec, mtcars)
-anova(fitB2B, fitB3B) # justified
-summary(fitB3B)
-
-
-fitB4 <- lm(mpg ~ am + wt + qsec + hp, mtcars)
-anova(fit3, fit4)
-# ==> the addition of hp is not justified
-
-
-fit5 <- lm(mpg ~ am + wt + qsec + disp, mtcars)
-anova(fit3, fit5)
-# ==> the addition of disp is not justified
-
-fit3B <- lm(mpg ~ am + wt + qsec + wt*am, mtcars)
-anova(fit3, fit3B)
-
-summary(fit3)
-summary(fit3B)
-
-
-#' nested models C
-#' ---------------
-
-
-fitC1 <- lm(mpg ~ am, mtcars)
-fitC2 <- lm(mpg ~ am + wt , mtcars)
-fitC2B <- lm(mpg ~ am + wt*am , mtcars)
-
-anova(fitC1,fitC2, fitC2B) # justified
-fitC3B <- lm(mpg ~ am + wt*am + hp, mtcars)
-anova(fitC2B, fitC3B) # justified
-summary(fitC3B)
-
-
-fitC4B <- lm(mpg ~ am + wt*am + hp + qsec , mtcars)
-anova(fitC3B, fitC4B)
-# ==> the addition of hp is not justified
-summary(fitC4B)
-
-
-
-#' conclusion:
-#' -----------
-
-# 2 equations, automatic vs manual
-# automatic: mpg = 9.723 - 2.937 wt + 1.017 qs
-# manual : mpg = (9.723 + 14.079) - (2.937 + 7.078) wt + 1.017 qs
-
-# ==> for small wt, manual is better, for hign wt auto is better.
-# balance point, w = 3.4 (thousands of lb)
-# The manufactureres seem aware of it, as the overlap zone goes from circa
-
-mt24 <- filter(mtcars, wt > 2.5 & wt < 4.5)
-mt24a <- filter(mt24, am==0)
-mt24m <- filter(mt24, am==1)
-# ggplot(mt24, aes(wt, am))+ geom_point()
-min(mt24a$wt) # 3.15
-max(mt24m$wt) # 3.57
