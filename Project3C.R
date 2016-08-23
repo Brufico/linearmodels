@@ -1,6 +1,6 @@
 #' ---
 #' title: "Linear Models"
-#' subtitle: "Project1.R"
+#' subtitle: "Project3C.R"
 #' author: "Bruno Fischer Colonimos"
 #' date: '`r format(Sys.Date(), "%d %B %Y")`'
 #' output:
@@ -143,8 +143,9 @@ displaygraph(gviolin)
 #              height = vsfigheight)
 
 
-#' Plotting the effect of every variable on mpg, conmparing
-#' automatic and manual transmissions
+
+#' Plotting the effect of every variable on mpg, conmparing automatic and manual transmissions
+#' -------------------------------------------------------------------------------------------
 
 # plotting function
 plotam <- function(varname, withlegend = FALSE) {
@@ -204,9 +205,11 @@ slrg <- arrangeGrob(gg,
                    mylegend, nrow=1, widths=c(10, 1))
 # to display
 
-displaygraph(slrg, "win",
-             width = vlfigwidth,
-             height = lfigheight)
+displaygraph(slrg)
+
+# displaygraph(slrg, "win",
+#              width = vlfigwidth,
+#              height = lfigheight)
 
 
 
@@ -382,17 +385,22 @@ resvarplot <- function(varname) {
 
 lpres1 <- lapply(vnames, FUN=resvarplot)
 
+# title
+title <- textGrob("Model: mpg ~ wt + am + qsec (without interaction)",
+                   gp = gpar(fontface="bold"))
 
 gr1 <- arrangeGrob(grobs = lpres1,
           #ncols=3
           layout_matrix = matrix(c(1,2,3,4), nrow=1),
           left = "residuals",
-          top = "model: mpg ~ wt + am + qsec (without interaction)"
+          top = title
           )
 
 # to display
-displaygraph(gr1, "win", width = vlfigwidth,
-             height = sfigheight)
+
+displaygraph(gr1)
+# displaygraph(gr1, "win", width = vlfigwidth,
+#              height = sfigheight)
 
 
 
@@ -434,17 +442,20 @@ resvarplot2 <- function(varname) {
 
 lpres2 <- lapply(vnames, FUN=resvarplot2)
 
+title <- textGrob("Model: mpg ~ wt*am + qsec (with interaction)",
+                  gp = gpar(fontface="bold"))
 
 gr2 <- arrangeGrob(grobs = lpres2,
                   #ncols=3
                   layout_matrix = matrix(c(1,2,3,4), nrow=1),
                   left = "residuals",
-                  top = "model: mpg ~ wt*am + qsec (with interaction)"
+                  top = title
 )
 
 # to display
-displaygraph(gr2, "win", width = vlfigwidth,
-             height = sfigheight)
+displaygraph(gr2)
+# displaygraph(gr2, "win", width = vlfigwidth,
+#              height = sfigheight)
 
 
 
@@ -479,7 +490,8 @@ anpv <- an$`Pr(>F)`
 #  NA 0.002144762 0.675630240
 
 # get individual p-values
-# pv[2]
+# anpv[2]
+# anpv[3]
 
 
 
@@ -491,6 +503,7 @@ anpv <- an$`Pr(>F)`
 #' diagnostics2: influential outliers
 #' ----------------------------------
 
+# get 'mtcars' again, in order to reestablish row names
 data(mtcars)
 mtcars2 <- mtcars
 mtcars2$model <- rownames(mtcars)
@@ -502,27 +515,27 @@ s <- summary(fit2A)
 # s
 
 # version 1
-windows(width = vlfigwidth, height = sfigheight)
-pr <- c(1,1)
+# windows(width = vlfigwidth, height = sfigheight)
+# pr <- c(1,1)
 pr <- par("mfrow")
 par(mfrow = c(1,3))
 plot(fit2A, which = 4 ) # , ylim = .25
 plot(fit2A, which = 5) # ylim = c(-2.5, 2.5)
 plot(fit2A, which = 6) # , ylim = .25
 par(mfrow = pr)
-
-dev.off()
-
-windows(width = vlfigwidth, height = sfigheight)
-pr <- c(1,1)
-pr <- par("mfrow")
-par(mfrow = c(1,3))
-plotlm(fit2A, which = 4 , ylim = .3 ) # , ylim = c(0, .25) #???
-plotlm(fit2A, which = 5, ylim = c(-2.5, 2.5))
-plotlm(fit2A, which = 6, ylim = c(0, .25))
-par(mfrow = pr)
-
-dev.off()
+#
+# dev.off()
+#
+# windows(width = vlfigwidth, height = sfigheight)
+# pr <- c(1,1)
+# pr <- par("mfrow")
+# par(mfrow = c(1,3))
+# plotlm(fit2A, which = 4 , ylim = .3 ) # , ylim = c(0, .25) #???
+# plotlm(fit2A, which = 5, ylim = c(-2.5, 2.5))
+# plotlm(fit2A, which = 6, ylim = c(0, .25))
+# par(mfrow = pr)
+#
+# dev.off()
 
 
 
@@ -530,19 +543,17 @@ dev.off()
 hatvalues(fit2A)
 dfb <- dfbetas(fit2A)
 
+# dfb[ , c("wt"  , "am", "wt:am")]
 
-dfb[ , c("wt"  , "am", "wt:am")]
+maindfb <- dfb[c("Fiat 128", "Maserati Bora" , "Chrysler Imperial" ) , c("wt"  , "am", "wt:am")]
 
-dfb[c("Fiat 128", "Maserati Bora" , "Chrysler Imperial" ) , c("wt"  , "am", "wt:am")]
+maindfb["Fiat 128", "wt"]
+maindfb["Fiat 128", "wt:am"]
 
 
+# Removing Chrysler Imperial , Maserati Bora
+# ---------------------------------------------
 
-# ==> Try without Chrysler Imperial , Maserati Bora
-
-# data(mtcars)
-# mtcars2 <- mtcars
-# mtcars2$model <- rownames(mtcars)
-#
 
 mtcars2B <- filter(mtcars2, model != "Chrysler Imperial", model != "Maserati Bora")
 rownames(mtcars2B) <- mtcars2B$model
@@ -553,36 +564,44 @@ s
 
 
 # version 1
-windows(width = vlfigwidth, height = sfigheight)
-pr <- par("mfrow")
-par(mfrow=c(1,3))
-plot(fit2B, which = 4)
-plot(fit2B, which = 5)
-plot(fit2B, which = 6)
-par(mfrow=pr)
-dev.off()
+# windows(width = vlfigwidth, height = sfigheight)
+# pr <- par("mfrow")
+# par(mfrow=c(1,3))
+# plot(fit2B, which = 4)
+# plot(fit2B, which = 5)
+# plot(fit2B, which = 6)
+# par(mfrow=pr)
+# dev.off()
 
 # fixing ylim in plot.lm
 #  see:  http://stackoverflow.com/questions/29484167/setting-ylim-in-rs-plot-lm-residual-plot
 
-windows(width = vlfigwidth, height = sfigheight)
+# windows(width = vlfigwidth, height = sfigheight)
 pr <- par("mfrow")
 par(mfrow=c(1,3))
 plotlm(fit2B, which = 4, ylim = .25)
 plotlm(fit2B, which = 5, ylim = c(-2.5, 2.5) )
 plotlm(fit2B, which = 6, ylim = .25)
 par(mfrow=pr)
-dev.off()
+# dev.off()
 
 
 
-
-
-
+# verification lookup hatvalues and dfbetas
 hatvalues(fit2B)
 dfb <- dfbetas(fit2B)
-dfb[ , c("am", "wt:am")]
+dfb[ , c("am", "am:wt")]
 
+
+
+# Diagnostics again
+pr <- par("mfrow")
+par(mfrow=c(1,4))
+plot(fit2B)
+par(mfrow=pr)
+# dev.off()
+
+# ==> normality assumption believable
 
 
 #'
@@ -600,53 +619,80 @@ nwt <- - (sfc[2,1] / sfc[5,1])
 deltaslope <- sfc[5,1]
 
 
-# 2 equations, automatic vs manual
-# automatic: mpg = 9.723 - 2.937 wt + 1.017 qs
-# manual : mpg = (9.723 + 14.079) - (2.937 + 7.078) wt + 1.017 qs
 
 # ==> for small wt, manual is better, for high wt auto is better.
 # balance point, w = 3.4 (thousands of lb)
-# The manufactureres seem aware of it, as the overlap zone goes from circa
+# The manufactureres seem to share the same opinion, as the overlap zone goes from circa
 
-mt24 <- filter(mtcars, wt > 2.5 & wt < 4.5)
-mt24a <- filter(mt24, am==0)
-mt24m <- filter(mt24, am==1)
-# ggplot(mt24, aes(wt, am))+ geom_point()
-min(mt24a$wt) # 3.15
-max(mt24m$wt) # 3.57
+mta <- filter(mtcars, am==0)
+mtm <- filter(mtcars, am==1)
+min(mta$wt) # 2.465
+max(mtm$wt) # 3.57
+
+
+annotslines <- data.frame(intc = c(min(mta$wt), max(mtm$wt)))
+
+
+# graphing this:
+mtcars2$gearbox <- factor(mtcars2$am, labels = c("auto", "manual"))
+
+carsxcluded <- filter(mtcars2, model == "Chrysler Imperial" | model == "Maserati Bora")
+carsxcluded$adj <- c(0, 0)
+
+
+gviolinwt <- ggplot(mtcars2, aes(gearbox, wt, color=gearbox)) +
+        geom_violin(mapping=aes(fill=gearbox),
+                    width=1.2, show.legend = FALSE, alpha = .2) +
+        geom_boxplot(width=.4, outlier.size = 0) +
+        geom_jitter(width=.15, height= 0,
+                    alpha =.5, size = 2, color="black") +
+        geom_hline(data=annotslines,aes(yintercept = intc), linetype = 2) +
+        geom_text(data = carsxcluded,
+                  aes(gearbox, wt, label = model, hjust=adj),
+                  nudge_x = 0.00, nudge_y = 0.05, color = "black") +
+        guides(col = guide_legend(reverse = TRUE)) +
+        scale_y_continuous(limits=c(NA, 6)) +
+        labs(title = "Automatic vs manual gearbox : car weight distributions") +
+        coord_flip()
+
+displaygraph(gviolinwt)
+
+
 
 
 
 
 #'
-#' Bootstrapping the difference of coefficients
-#' ------------------------------------------------
+#' Bootstrapping
+#' --------------
 #'
 
-data(mtcars2B)
+# data(mtcars2B)
 
 # first: estimate the model from lm
-fit <- lm(mpg ~  qsec + wt*am, mtcars)
+fit <- lm(mpg ~  qsec + wt*am, mtcars2B)
 sc <- summary(fit)$coefficients
 
 # conf int for coeff(wt:am)
-sc[5,1] + c(-1,1) * qt(df = nrow(mtcars) - 2, p = .975) * sc[5,2]
+Int <- sc[5,1] + c(-1,1) * qt(df = nrow(mtcars) - 2, p = .975) * sc[5,2]
+# interval notation
+Intslope <- paste("[", format( Int[1] ,digits =3), ";", format( Int[2] ,digits =3), "]")
 
 
 
-n <- nrow(mtcars)
-B <- 10000
+n <- nrow(mtcars2B) # size of each sample
+B <- 10000 # number of samples to generate
 
 # resampling
 set.seed(1254)
 
 
-# do not storethe samples
+# do not store the samples
 #
 # generate samples
-x <- sample(1:n, n, replace = TRUE)
+# x <- sample(1:n, n, replace = TRUE) # x is a vector of row indexes
 
-lsamp <- lapply(1:B, function(i) sample(1:n, n, replace = TRUE))
+lsamp <- lapply(1:B, function(i) {sample(1:n, n, replace = TRUE)}) # list of B samples
 
 getcoeffs <- function(x){
         # sample data
@@ -668,90 +714,55 @@ lsamp <- as.data.frame(lsamp, stringsAsFactors = FALSE)
 colnames(lsamp) <- c("neutral", "diff_slope")
 
 # conclusions about "neutral"
-quantile(lsamp$neutral, c(.025, .975))
+neutralquantile <- quantile(lsamp$neutral, c(.025, 0.50, .975))
 mean(lsamp[[1]]) # surprising
-median(lsamp$neutral)
-head(lsamp)
-min(lsamp$neutral)
-max(lsamp$neutral)
+neutralmedian <- median(lsamp$neutral)
+# head(lsamp)
+# min(lsamp$neutral)
+# max(lsamp$neutral)
 
-g = ggplot(lsamp, aes(x = neutral)) +
-        geom_density(color = "black", fill = "lightblue") +
-        scale_x_continuous(limits = c(1,5))
-g
+labdf <- data.frame(quant = neutralquantile + c(-.05, 0, 0.05),
+                    y = c(.1, .1, .1),
+                    lab = paste(c("q[.025] == ", "median ==" ,"q[.975] =="), round(neutralquantile, 3)),
+                    just = c(0, 0.5, 0),
+                    angl = c(90,0,90))
+
+vldf <- data.frame(quant = neutralquantile,
+                   lt=factor(c(2,1,2)))
 
 
-# About "diff_slope"
 
+gdens = ggplot(lsamp, aes(x = neutral)) +
+        geom_density(color = "black", fill = "lightblue" ) +
+        scale_x_continuous(limits = c(1.5 , 4.5)) +
+        geom_vline(data=vldf, aes(xintercept=quant, linetype = lt), color = "red") +
+        geom_text(data = labdf, aes(quant, y, label= lab, angle = angl, hjust = just), parse = TRUE) +
+        labs(x = "neutral weight",
+             title = expression(Resampling~distribution~of~wt[0])) +
+        theme(legend.position = "none")
+gdens
+
+
+
+# confidence interval
+
+# conf int for wt0
+Int <- quantile(lsamp$neutral, c(.025, .975))
+# interval notation
+Intwt0 <- paste("[", format( Int[1] ,digits =3), ";", format( Int[2], digits =3), "]")
+
+
+
+
+# About "diff_slope", approach through bootstrap (not used in the report)
 quantile(lsamp$diff_slope, c(.025, .975))
-mean(lsamp$diff_slope) # surprising
+mean(lsamp$diff_slope)
 median(lsamp$diff_slope)
 
+# conf int for slope (2)
+Int <- quantile(lsamp$diff_slope, c(.025, .975))
+# interval notation
+Intdfslope <- paste("[", format( Int[1] ,digits =3), ";", format( Int[2] ,digits =3), "]")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ===================================================================================================
-# ===================================================================================================
-
-
-#' correlations
-#' ------------
-
-# cor(mtcars)
-
-# heatmap(cor(mtcars),
-#        col=colorRampPalette(c("blue","white", "red"))( 20 ))
-
-
-
-
-#' diagnostics
-#' ------------
-
-pr <- par("mfrow")
-par(mfrow=c(2,2))
-plot(fit)
-par(mfrow=pr)
-
-
-# residuals plots
-
-vnames <- c("wt", "am", "qsec") # variables in the final model
-
-# rstudent(fit) # try
-
-
-# Store residuals
-mtcars <- mutate(mtcars, resid1 = rstudent(fit))
-
-
-resvarplot <- function(varname, residvar = "resid1") {
-        ggplot(mtcars, aes_(as.name(varname) , as.name(residvar))) +
-                geom_point()+
-                geom_smooth()
-}
-
-# resvarplot("wt")
-# resvarplot("am")
-# resvarplot("qsec")
-
-lpres <- lapply(vnames, FUN=resvarplot)
-windows(width=10)
-multiplot(plotlist = lpres,
-          #ncols=3
-          layout = matrix(c(1,2,3), nrow=1)
-          )
-dev.off()
 

@@ -1,5 +1,5 @@
 ---
-title: 'Manual or automatic gearbox: which is the best?'
+title: 'Manual or automatic gearbox: Which is the best?'
 output: 
   pdf_document: 
     number_sections: yes
@@ -37,10 +37,10 @@ Report
 
 Executive Summary 
 -----------------
-**Problem**: What type of gearbox is the best for improving a car's fuel efficiency (mpg)\
-**Answer**: Based on a linear model of the fuel efficiency (`mpg`) of the cars in the dataframe 'mtcars', it appears that, in order to get a higher mpg, a manual gearbox is better than an automatic one for the lighter cars, and that the converse is true for the heavier cars. The neutral weight is about XXXXX pounds, a manual gearbox being about ZZZ mpg better than the same car fitted with an automatic gearbox, for a car weighing 1000 pounds less than the neutral weight. 
+**Problem**: What type of gearbox is the best for improving a car's fuel efficiency (mpg)?\
+**Answer**: Based on a linear model of the fuel efficiency (`mpg`) of the cars in the dataframe 'mtcars', it appears that, in order to get a higher mpg, a manual gearbox is better than an automatic one for the lighter cars, and that the converse is true for the heavier cars. The neutral weight is about XXXXX pounds, a car with a manual gearbox being about ZZZ miles per gallon better than the same car fitted with an automatic gearbox, for a car weighing 1000 pounds less than the neutral weight. 
 
-For a car heavier than the neutral weight, the reverse is true, an automatic gearbox providing an advantage of about ZZZ mpg over a manual gearbox, for each increase of 1000 pounds. 
+For a car heavier than the neutral weight, the reverse is true, an automatic gearbox providing an improvement of about ZZZ miles per gallon over a manual gearbox, for each increase of 1000 pounds. 
 
 Source document
 ---------------
@@ -53,7 +53,7 @@ Short preliminary exploration
 A quick exploration shows that, overall, in the sample, the cars fitted with a manual gearbox have a higher mpg than those with an automatic one (mean == x-XXX for manual, vs x-YYY for automatic, see graph _(@distrib)_ in appendix ). However, scatterplots of mpg against each other variable  in the set (plot _(@scatter)_ in appendix) show, for some independent variables, a different simple regression slope for each gearbox type. This suggests that, depending on what other variables are in the model considered, the influence of the gearbox type `am` on `mpg` might be more complex than a single constant effect.
 
 
-Model selection process {#modelselection}
+Model selection process {#sec:modelselection}
 -----------------------
 
 * **First approach: backwards elimination** . We start with a model with all the possible independent variables and then remove at each step the variable whith the least significantly nonzero coefficient, starting with the
@@ -65,10 +65,10 @@ Using this process, we eliminate one by one x-AAA, and the resulting model formu
 * **Adding interaction:** we add `am*wt`, thus considering the model `mpg ~ am*wt + qsec`. This model is better than the previous one, with an adjusted R² = xx-xxx. An anova test confirms that:
     + the additional `am*wt` term is a significant improvement (p.value = xx-xxx), 
     + adding the interaction `am*qsec` would **not** be justified (p-value = xx-xxx, and all coefficients becoming non-significants). 
-We thus choose the model: `mpg ~ am*wt + qsec` . The same diagnostics plots (graph )
+We thus choose the model: `mpg ~ am*wt + qsec` . The residuals plots (plot _(@diagmodel1B)_ ) now become acceptable.
 
-* **Diagnostic 2: Outliers removal**: The model equation is `mpg ~ am*wt + qsec`. However checking for influential outliers, we can see (plot _(@diagmodel2)_) that three cars seem to influence substantially the results. Based on this plot and on the relevant dfbetas we choose to **exclude** the 'Chrysler Imperial' and the 'Maserati Bora' from the data, but to **keep** the 'Fiat 128', which has less influence on the critical coefficients (see below) $\beta_{am}$ and $\beta_{wt:am}$ than e.g. the 'Merc 240D' or the 'Cadillac Fleetwood' ($dfbeta_{am}$ = xx-xx and $dfbeta_{am:wt}$ = xx-xx)
-The same diagnostics plots (plot _(@diagmodel3)_) now become acceptable.
+* **Diagnostic 2: Outliers removal**: The model formula is `mpg ~ am*wt + qsec`. However, checking for influential outliers, we can see (plot _(@diagmodel2)_) that three cars seem to influence substantially the results. Based on this plot and on the relevant dfbetas we choose to **exclude** the 'Chrysler Imperial' and the 'Maserati Bora' from the data, but to **keep** the 'Fiat 128', which, with defbetas $dfbeta_{am}$ = xx-xx and $dfbeta_{am:wt}$ = xx-xx, has less influence on the critical coefficients $\beta_{am}$ and $\beta_{wt:am}$ (see below) than other cars ('Merc 240D', 'Cadillac Fleetwood' ...)
+The same diagnostics plots after removal (plot _(@diagmodel3)_) now are acceptable.
 
 * **Finally**: The estimated coefficients of the model are (with `lm`): 
 
@@ -79,12 +79,12 @@ kable(mat)
 ```
  
 
-
 Using the model to measure the influence of the gearbox type
 ------------------------------------------------------------
 
-### Principle {-}
-* The model equation is: $mpg =  \beta_0 + \beta_{am} am + \beta_{hp} hp + \beta_{wt} wt + \beta_{am:wt} am \cdot wt$    where $\beta_0$ is the intercept and $\beta_x$ is the coefficient of x, computed from the sample. Thus, this general equation can be written as:
+**(a) Principle**
+
+* The model equation is: $mpg =  \beta_0 + \beta_{am} am + \beta_{hp} hp + \beta_{wt} wt + \beta_{am:wt} am \cdot wt$    where $\beta_0$ is the intercept and $\beta_x$ is the coefficient of x. Thus, this general equation can be written as:
 
     * if am = 1 (manual), $mpg = mpg_1 =  (\beta_0 + \beta_{am}) + \beta_{hp} hp + (\beta_{wt} + \beta_{am:wt}) wt$
     * if am = 0 (automatic), $mpg = mpg_0 =  \beta_0 + \beta_{hp} hp + \beta_{wt} wt$
@@ -94,8 +94,8 @@ Thus the difference between manual and automatic is $\Delta = mpg_1 - mpg_0 = \b
 So manual and automatic gearbox are equivalent when $\Delta$ = 0, that is: $wt = wt_0 = -\frac{\beta_{am}}{\beta_{am:wt}}$ and the slope of the difference $\Delta$ is $\beta_{am:wt}$, i.e. a variation of weight of 1000 pounds increases $\Delta$ by  $\beta_{am:wt}$ .
 
 
-### Point estimation and confidence intervals: {-} 
-As seen at the end of the [previous section](#modelselection) `lm` gives us the following elements: $\beta_{am} \approx$ xx-xxx and  $\beta_{am:wt} \approx$  xx-yyy, but an estimate of the neutral $wt_0$ is not a combination of these two estimation. $wt_0$ is better estimated using a bootstrap procedure:
+**(b) Point estimation and confidence intervals**\
+As seen at the end of the [previous section](#sec:modelselection) `lm` gives us the following elements: $\beta_{am} \approx$ xx-xxx and  $\beta_{am:wt} \approx$  xx-yyy, but an estimate of the neutral $wt_0$ is not a combination of these two estimation. $wt_0$ is better estimated using a bootstrap procedure:
 
 * For $\beta_{am:wt}:$ we can use the point estimate and the standard error given by `lm` with the t distribution. We get: 
     + point estimation: xx-yyy, 95% confidence interval [ ]
@@ -124,11 +124,11 @@ Appendix: figures
 * (@scatter) Scatterplots
 
 
-* (@diagmodel1) Linear model without interaction, diagnostic plots
+* (@diagmodel1) Linear model without interaction, residuals plots
 
+* (@diagmodel1B) Linear model with interaction, residuals plots
 
 * (@diagmodel2) Linear model with interaction, diagnostics plot for checking influential outliers.
-
 
 * (@diagmodel3) Linear model  with interaction, diagnostics plot after removing two influential outliers.
 

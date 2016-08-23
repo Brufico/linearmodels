@@ -61,66 +61,102 @@ data("mtcars")
 #' Data exploration
 #' ----------------
 
-# means
+#' compute means for  am = 0 / 1
 
 means <- mtcars %>%
         group_by(am) %>%
         summarise(meanmpg=mean(mpg))
 
-meanauto <- means[1,2]
-meanmanual <- means[2,2]
-
-# freq polygons
-gpoly <- ggplot(mtcars, aes(mpg, y = ..density..,
-                            color = factor(am))) +
-        geom_freqpoly(bins = 16) +
-        scale_color_discrete("am") +
-        scale_x_continuous(limits = c(5, 40)) +
-        xlab(NULL)
-# gpoly
+meanauto <- means[1,"meanmpg"]
+meanmanual <- means[2,"meanmpg"]
 
 
-# boxplots
-gbox <- ggplot(mtcars, aes(factor(am), mpg, color=factor(am))) +
-        geom_boxplot() +
-        scale_x_discrete("am",labels = c("0.00", "1.00")) +
+#' Compare distributions
+
+# Solution 1 (deprecated)
+# # freq polygons
+# gpoly <- ggplot(mtcars, aes(mpg, y = ..density..,
+#                             color = factor(am))) +
+#         geom_freqpoly(bins = 16) +
+#         scale_color_discrete("am") +
+#         scale_x_continuous(limits = c(5, 40)) +
+#         xlab(NULL)
+#
+# # try , not used
+# gdens <- ggplot(mtcars, aes(mpg, y = ..density..,
+#                             fill = factor(am))) +
+#         geom_density(alpha=.2, bw =2) +
+#         scale_fill_discrete("am") +
+#         scale_x_continuous(limits = c(5, 40)) +
+#         xlab(NULL)
+# # gdens
+#
+#
+# # boxplots
+# gbox <- ggplot(mtcars, aes(factor(am), mpg, color=factor(am))) +
+#         geom_boxplot() +
+#         geom_jitter(width=.5, height=.2, alpha =.5, size = 2) +
+#         scale_x_discrete("am", labels = c("0.00", "1.00")) +
+#         scale_y_continuous(limits = c(5, 40)) +
+#         scale_color_discrete("am") +
+#         ylab(NULL)+
+#         coord_flip()
+#
+# # show freq polygons and boxplot together
+#
+# # remark: with the bold title, this is very slow
+# # bold title
+# title1 <- textGrob("Automatic vs manual gearbox mpg distributions",
+#                 gp=gpar(fontface="bold"))
+#
+# gr <- arrangeGrob(grobs=list(gpoly, gbox),
+#                   layout_matrix = matrix(c(1, 1, 1, 2, 2), ncol = 1) ,
+#                   top = title1,
+#                   bottom = "mpg")
+# # stores in gr use then grid.graw(gr)
+#
+# # displaygraph when appropriate
+# grid.newpage()
+# grid.draw(gr)
+
+
+
+# Alternative: violin + box + points
+
+mtcars <- mutate(mtcars, gearbox = factor(ifelse(am == 0, "auto", "manual")))
+
+gviolin <- ggplot(mtcars, aes(factor(am), mpg, color=gearbox)) +
+        geom_violin(mapping=aes(fill=factor(am)), show.legend = FALSE, alpha = .2) +
+        geom_boxplot(width=.3) +
+        geom_jitter(width=.3, height=.3, alpha =.5, size = 2, color="black") +
+        scale_x_discrete("am") +
         scale_y_continuous(limits = c(5, 40)) +
-        scale_color_discrete("am") +
-        ylab(NULL)+
+        # scale_color_discrete("gearbox") +
+        guides(col = guide_legend(reverse = TRUE))+
+        labs(title = "Automatic vs manual gearbox : mpg distributions") +
         coord_flip()
 
-# show freq polygons and boxplot
-
-# remark: with the bold title, this is very slow
-# bold title
-title1 <- textGrob("Automatic vs manual gearbox mpg distributions",
-                gp=gpar(fontface="bold"))
-
-gr <- arrangeGrob(grobs=list(gpoly, gbox),
-                  layout_matrix = matrix(c(1,2), nrow = 2) ,
-                  top = title1,
-                  bottom = "mpg")
-# stores in gr use then grid.graw(gr)
-grid.newpage()
-grid.draw(gr)
+# display
+gviolin
 
 
-# plotting the effect of every variable on mpg, conmparing
-# automatic and manual transmissions
+
+#' Plotting the effect of every variable on mpg, conmparing
+#' automatic and manual transmissions
 
 # plotting function
 plotam <- function(varname, withlegend = FALSE) {
         g <- ggplot(mtcars,
                aes_(x = as.name(varname),
                     y = quote(mpg),
-                    color = quote(factor(am)))) +
+                    color = quote(gearbox))) +
                 geom_jitter(width= .3, height = .2) +
                 geom_smooth(data = filter(mtcars, am ==0),
                             method="lm", se= FALSE) +
                 geom_smooth(data = filter(mtcars, am ==1),
                             method="lm", se= FALSE) +
                 ylab(NULL) +
-                scale_color_discrete(guide_legend("am")) +
+                # scale_color_discrete(guide_legend("am")) +
                 theme(legend.position="bottom")
         if (withlegend) {
                 g
@@ -132,9 +168,39 @@ plotam <- function(varname, withlegend = FALSE) {
 # test
 # plotam("wt")
 # plotam("wt" , withlegend=TRUE)
+#
+# plotam <- function(varname, withlegend = FALSE) {
+#         g <- ggplot(mtcars,
+#                     aes_(x = as.name(varname),
+#                          y = quote(mpg),
+#                          color = quote(factor(am)))) +
+#                 geom_jitter(width= .3, height = .2) +
+#                 geom_smooth(data = filter(mtcars, am ==0),
+#                             method="lm", se= FALSE) +
+#                 geom_smooth(data = filter(mtcars, am ==1),
+#                             method="lm", se= FALSE) +
+#                 ylab(NULL) +
+#                 scale_color_discrete(guide_legend("am")) +
+#                 theme(legend.position="bottom")
+#         if (withlegend) {
+#                 g
+#         } else {
+#                 g + theme(legend.position = "none")
+#         }
+# }
+
+
+
+
+
+
+
+
+
+
 
 # plot all variables except mpg, against am
-lpl <- lapply(X = setdiff(colnames(mtcars), c("am", "mpg")),
+lpl <- lapply(X = setdiff(colnames(mtcars), c("am", "gearbox", "mpg")),
               plotam)
 
 
@@ -154,7 +220,7 @@ mylegend <- g_legend(plotam("wt", withlegend = TRUE))
 
 # draw the plot
 # windows(width = 10, height = 6)
-title2 <- textGrob("Automatic vs manual:  mpg simple linear regressions",
+title2 <- textGrob("Automatic vs manual gearbox:  mpg simple linear regressions",
                    gp = gpar(fontface="bold"))
 
 gg <- arrangeGrob(grobs = lpl,
@@ -164,6 +230,7 @@ gg <- arrangeGrob(grobs = lpl,
 
 g3 <- arrangeGrob(gg,
                    mylegend, nrow=2, heights=c(10, 1))
+# to display
 grid.newpage()
 grid.draw(g3)
 # dev.off()
@@ -177,18 +244,7 @@ grid.draw(g3)
 #' backwards elimination (without interaction)
 #' -------------------------------------------
 
-#' principle : start with a model with all variables, then
-#' remove one by one the variable whith a coefficient not
-#' significantly different from zero, starting with the
-#' highest p-values.
-#'
-#' Here we get: mpg ~ am + wt + qsec
-#'
-
-# start
-
-# first iteration
-fit <- lm(mpg ~ carb + hp + disp + cyl + wt + gear + am + drat + vs + qsec, mtcars)
+# Steps in in the iteration cycle
 
 # testing function, not-really-so-great
 nextstep <- function(fit) {
@@ -217,97 +273,108 @@ nextstep <- function(fit) {
 }
 
 
-# init
-i <- 1
-elim <-  numeric(0)
+# initialization of process. returns 3 function:
+# 1: remove
+# 2.
 
-step <- nextstep(fit)
-elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
-i <- i + 1
-# show essentials
-summary(fit)
-step
-elim
+initrem <- function() {
+        step <- NULL
+        i <- 1
+        elim <-  numeric(0) # history of removals
+        list(
+                remove = function() {
+                        step <<- nextstep(fit)
+                        elim[i] <<- paste0(step$nonsignif.var, " (p.value: ", round(step$p.value, 2) , ")" )
+                        i <<- i + 1
+                },
+                step = function() {step},
+                elim = function() {elim}
+        )
+
+}
+
+
+# initialization
+temp <- initrem() # Initialization + creation of the three functions
+remove <- temp$remove
+step <- temp$step
+elim <- temp$elim
+
+# first iteration
+fit <- lm(mpg ~ carb + hp + disp + cyl + wt + gear + am + drat + vs + qsec, mtcars)
+summary(fit) # show current model
+try(remove()) # what is to be removed
+step() # show what happens next
+elim() # history of removals
 
 
 # 2 removing cyl
 fit <- lm(mpg ~ carb + hp + disp + wt + gear + am + drat + vs + qsec, mtcars)
-step <- nextstep(fit)
-elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
-i <- i + 1
-# show essentials
-summary(fit)
-step
-elim
 
+summary(fit)
+try(remove())
+step()
+elim()
 
 # removing vs
 fit <- lm(mpg ~ carb + hp + disp + wt + gear + am + drat + qsec, mtcars)
-step <- nextstep(fit)
-elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
-i <- i + 1
-# show essentials
+
 summary(fit)
-step
-elim
+try(remove())
+step()
+elim()
 
 
 # removing carb
 fit <- lm(mpg ~ hp + disp + wt + gear + am + drat + qsec, mtcars)
-step <- nextstep(fit)
-elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
-i <- i + 1
-# show essentials
+
 summary(fit)
-step
-elim
+try(remove())
+step()
+elim()
 
 
 # removing gear
 fit <- lm(mpg ~ hp + disp + wt + am + drat + qsec, mtcars)
-step <- nextstep(fit)
-elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
-i <- i + 1
-# show essentials
+
 summary(fit)
-step
-elim
+try(remove())
+step()
+elim()
 
 
 # removing drat
 fit <- lm(mpg ~ hp + disp + wt + am + qsec, mtcars)
-step <- nextstep(fit)
-elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
-i <- i + 1
-# show essentials
+
 summary(fit)
-step
-elim
+try(remove())
+step()
+elim()
 
 
 # removing disp
 fit <- lm(mpg ~ hp + wt + am + qsec, mtcars)
-step <- nextstep(fit)
-elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
-i <- i + 1
-# show essentials
-summary(fit)
-step
-elim
 
-# removing hp final step
+summary(fit)
+try(remove())
+step()
+elim()
+
+
+# removing hp - final step
 fit <- lm(mpg ~ wt + am + qsec, mtcars)
-step <- nextstep(fit)
-elim[i] <- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
-i <- i + 1
-# show essentials
-summary(fit)
-step
-elim
 
+summary(fit)
+try(remove())
+step()
+elim()
+
+
+# result of step()
 # All significants
 #   nonsignif.var              formula    sigma  Rsquared Adj.Rsquared
 # all significant mpg ~ wt + am + qsec 2.458846 0.8496636    0.8335561
+
 
 
 
@@ -318,7 +385,7 @@ pr <- par("mfrow")
 par(mfrow=c(2,2))
 plot(fit, which = 1)
 par(mfrow=pr)
-dev.off()
+
 
 # residuals plots
 vnames <- c("wt", "am", "qsec") # variables in the final model
@@ -337,11 +404,12 @@ lpres <- lapply(vnames, FUN=resvarplot)
 
 windows(width = 10)
 gr <- arrangeGrob(grobs = lpres,
-          #ncols=3
           layout_matrix = matrix(c(1,2,3), nrow=1)
 )
 grid.draw(gr)
 dev.off()
+
+
 
 
 
@@ -354,15 +422,16 @@ s
 
 
 pr <- par("mfrow")
-par(mfrow=c(2,2))
+par(mfrow=c(1,2))
 plot(fit2, which = 4)
+plot(fit2, which = 5)
 par(mfrow=pr)
 
 
 
 
-#' Try Adding interaction am:qsec ==> no
-#' -------------------------------------
+#' Try Adding interaction am:qsec + anova test ==> no
+#' --------------------------------------------------
 
 fit3 <- lm(mpg ~ wt + am*wt + qsec + am*qsec, mtcars)
 s <- summary(fit3)
@@ -423,10 +492,12 @@ dfb[c("Fiat 128", "Maserati Bora" , "Chrysler Imperial" ) , c("wt"  , "am", "wt:
 
 # ==> Try without Chrysler Imperial , Maserati Bora
 
+
 mtcars2 <- mtcars
 mtcars2$model <- rownames(mtcars)
 mtcars2 <- filter(mtcars2, model != "Chrysler Imperial", model != "Maserati Bora")
 rownames(mtcars2) <- mtcars2$model
+
 
 fit2B <- lm(mpg ~ wt + am*wt + qsec, mtcars2)
 s <- summary(fit2B)
@@ -466,7 +537,7 @@ sfc
 # automatic: mpg = 9.723 - 2.937 wt + 1.017 qs
 # manual : mpg = (9.723 + 14.079) - (2.937 + 7.078) wt + 1.017 qs
 
-# ==> for small wt, manual is better, for hign wt auto is better.
+# ==> for small wt, manual is better, for high wt auto is better.
 # balance point, w = 3.4 (thousands of lb)
 # The manufactureres seem aware of it, as the overlap zone goes from circa
 
@@ -480,9 +551,10 @@ max(mt24m$wt) # 3.57
 
 
 
+
 #'
-#' (@) Bootstrapping the difference of coefficients
-#' ====================================================
+#' Bootstrapping the difference of coefficients
+#' ------------------------------------------------
 #'
 
 data(mtcars)

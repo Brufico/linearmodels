@@ -108,11 +108,9 @@ Appendix: figures
 
 * (@distrib) mpg distributions
 
-
-
 * (@scatter) Scatterplots
 
+* (@diag1residuals) Residuals plot of model mpg ~ am*wt + qsec
 
 
 
-(@) third example

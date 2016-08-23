@@ -1,7 +1,7 @@
 
 makefun <- function() {
         xx <- 1
-        aa <- function() {
+        aa <- function(...) {
                 xx <<- xx + 1
                 paste("x =", xx )
         }
@@ -12,17 +12,17 @@ makefun <- function() {
 tmp <- makefun()
 
 tmp$aa()
+tmp$aa("d")
 tmp$bb()
 
-aa <- tmp[1]
+aa <- tmp[[1]]
 
-aa()
+str(aa)
+str(tmp$aa)
 
-do.call(quote("aa"), list())
-aa()
+sapply(list("NULL","gg"), tmp$aa)
+sapply(list("NULL","gg"), aa)
 
-get("aaa")
-get("aaa", mode = "function")
 
 
 
