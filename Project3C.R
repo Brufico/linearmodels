@@ -249,7 +249,7 @@ nextstep <- function(fit) {
 }
 
 
-# init ialize the removel process and create functions
+# initialize the removel process and create functions
 initrem <- function() {
         i <- 1
         elim <- character(0)
@@ -580,8 +580,11 @@ s
 pr <- par("mfrow")
 par(mfrow=c(1,3))
 plotlm(fit2B, which = 4, ylim = .25)
+Sys.sleep(1)
 plotlm(fit2B, which = 5, ylim = c(-2.5, 2.5) )
+Sys.sleep(1)
 plotlm(fit2B, which = 6, ylim = .25)
+Sys.sleep(1)
 par(mfrow=pr)
 # dev.off()
 
@@ -594,7 +597,7 @@ dfb[ , c("am", "am:wt")]
 
 
 
-# Diagnostics again
+# Diagnostics again (checking basic assumptions)
 pr <- par("mfrow")
 par(mfrow=c(1,4))
 plot(fit2B)

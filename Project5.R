@@ -51,6 +51,8 @@ vlfigwidth <-  10
 defdevice <- NULL # NULL (print on current device), or 'win' (but anything goes)
 defsleep <- 10 # default waiting time in seconds
 
+bootstriter <-  1000 # bootstrap iterations
+
 
 #' More external code
 #' ------------------
@@ -635,22 +637,51 @@ displaygraph(gdfb)
 # displaygraph(gdfb2)
 #
 #
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
+
 # maindfb <- idfb[idfb$model %in% c("Fiat 128", "Maserati Bora" , "Chrysler Imperial" ) , c("wt"  , "am", "wt_am")]
 #
 # maindfb["Fiat 128", "wt"]
 # maindfb["Fiat 128", "wt_am"]
 
 
+# # try another way of plotting
+# # no, does not work
+# pr <- par("mfrow")
+# par(mfrow = c(1,3))
+# plot(fit2A, which = 4 )
+# plot(fit2A, which = 5 )
+# print(gdfb)
+# par(mfrow = pr)
+#
+#
+# library(car)
+#
+# outlierTest(fit2A)
+#
+# qqPlot(fit2A, main="QQ Plot") #qq plot for studentized resid
+#
+# leveragePlots(fit) # leverage plots
+# plot(fit2A, which=4)
+#
+# cutoff <- 4/((nrow(mtcars2)-length(fit2A$coefficients)-2))
+# plot(fit2A, which=4, cook.levels=cutoff)
+#
+#
+# influencePlot(fit2A,
+#               id.method ="identify",
+#               main = "Influence Plot",
+#               sub="Circle size is proportial to Cook's Distance" )
+
+
+
+# another try:
+# library(car)
+# # avPlots(fit2A, id.n =2, id.cex=0.7) # influential variables...
+#
+# influenceIndexPlot(fit2A, id.n=3)
+
+
+cooks.distance(fit2A)
 
 
 
@@ -676,9 +707,9 @@ s
 
 pr <- par("mfrow")
 par(mfrow=c(1,3))
-plotlm(fit2B, which = 4, ylim = .25)
+plotlm(fit2B, which = 4, ylim = .30)
 plotlm(fit2B, which = 5, ylim = c(-2.5, 2.5) )
-plotlm(fit2B, which = 6, ylim = .25)
+plotlm(fit2B, which = 6, ylim = .30)
 par(mfrow=pr)
 
 
@@ -997,7 +1028,7 @@ Intslope <- paste("[", format( Int[1] ,digits =3), ";", format( Int[2] ,digits =
 
 
 n <- nrow(mtcars2E) # size of each sample
-B <- 10000 # number of samples to generate
+B <- bootstriter # number of samples to generate (10000 )
 
 # resampling
 set.seed(2)

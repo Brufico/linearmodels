@@ -210,12 +210,12 @@ function (x, which = c(1L:3L, 5L), caption = list("Residuals vs Fitted",
 
                 if(missing(ylim)) {
                 ylim <- range(rsp, na.rm = TRUE)
-
+                } ## chg
                 if (id.n > 0) {
                         ylim <- extendrange(r = ylim, f = 0.08)
                         show.rsp <- order(-cook)[iid]
                 }
-                }
+                ## chg
                 do.plot <- TRUE
                 if (isConst.hat) {
                         if (missing(caption))

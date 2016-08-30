@@ -84,10 +84,10 @@ Using the model to measure the influence of the gearbox type
 
 **(a) Principle**
 
-* The model equation is: $mpg =  \beta_0 + \beta_{am} am + \beta_{hp} hp + \beta_{wt} wt + \beta_{am:wt} am \cdot wt$    where $\beta_0$ is the intercept and $\beta_x$ is the coefficient of x. Thus, this general equation can be written as:
+* The model equation is: $mpg =  \beta_0 + \beta_{am} am + \beta_{qsec} qsec + \beta_{wt} wt + \beta_{am:wt} am \cdot wt$    where $\beta_0$ is the intercept and $\beta_x$ is the coefficient of x. Thus, this general equation can be written as:
 
-    * if am = 1 (manual), $mpg = mpg_1 =  (\beta_0 + \beta_{am}) + \beta_{hp} hp + (\beta_{wt} + \beta_{am:wt}) wt$
-    * if am = 0 (automatic), $mpg = mpg_0 =  \beta_0 + \beta_{hp} hp + \beta_{wt} wt$
+    * if am = 1 (manual), $mpg = mpg_1 =  (\beta_0 + \beta_{am}) + \beta_{qsec} qsec + (\beta_{wt} + \beta_{am:wt}) wt$
+    * if am = 0 (automatic), $mpg = mpg_0 =  \beta_0 + \beta_{qsec} qsec + \beta_{wt} wt$
  
 Thus the difference between manual and automatic is $\Delta = mpg_1 - mpg_0 = \beta_{am} + \beta_{am:wt} wt$
 
