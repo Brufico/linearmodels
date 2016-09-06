@@ -1,0 +1,951 @@
+---
+title: 'Manual or automatic gearbox: Which is the best?'
+output: 
+  pdf_document: 
+    number_sections: yes
+urlcolor: blue
+fontsize: 10.5pt
+geometry: top=.9in, left=1in, right=1in, bottom = 1in, footskip = 0.3in
+
+date: "Bruno Fischer Colonimos, `r format(Sys.Date(), '%d %B %Y')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+options(digits = 2, scipen = 7)
+```
+```{r globals}
+vsfigheight <-  2 #2.5
+vsfigwidth <-  4
+sfigheight <-  3
+sfigwidth <-  5
+nfigheight <-  4.5 # chk
+nfigwidth <-  6 # chk
+lfigheight <-  5.5
+lfigwidth <-  7
+vlfigheight <-  8
+vlfigwidth <-  8
+knitr::opts_chunk$set(fig.height = nfigheight, fig.width = nfigwidth, fig.pos = "center")
+```
+
+
+
+```{r libs, include=FALSE}
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(boot)
+library(xtable)
+```
+
+
+```{r moreopts }
+defdevice <- NULL # NULL (print on current device), or 'win' (but anything goes)
+defsleep <- 10 # default waiting time in seconds
+
+bootstriter <-  20000 # bootstrap iterations
+
+# alter the ggplot theme a little (size of text)
+theme_set(theme_grey(base_size = 10))
+
+```
+
+
+```{r helperfunctions}
+#' vlookup (as in Excel). each column may be described by its rank or its name
+#'
+vlookup <- function(value, searchtable, searchcol = 1, returncol= 2){
+        searchtable[match(value, searchtable[[searchcol]]), returncol]
+}
+
+
+#' reordering factors
+#' -------------------------------------------------
+# from 'Standard Functions'
+orderfact <- function(dataf, nomfact, orderfreq = TRUE, orderdesc = TRUE,
+                      ordervar = "c..nt", orderval = NA, orderfun = sum,
+                      nlevels = NULL) {
+        if (is.null(nlevels)) {
+                direction <- ifelse(orderdesc,-1, 1)
+
+                if (orderfreq & ordervar == "c..nt") {
+                        dataf$c..nt <- c(1)
+                }
+                if (is.na(orderval) & ordervar == "c..nt") {
+                        dataf$c..nt <- c(1)
+                } else if (is.na(orderval) & ordervar != "c..nt") {
+                        # ne rien faire ...
+                } else {
+                        dataf$c..nt <-
+                                ifelse(is.na(dataf[[ordervar]]),
+                                       0 ,
+                                       ifelse(dataf[[ordervar]] == orderval,
+                                              1, 0))
+                        ordervar <- "c..nt"
+                }
+                # reordonner le facteur
+                if (orderfreq) {
+                        xx <- dataf[[nomfact]]
+                        xxx <- direction * dataf[[ordervar]]
+                        resfact <- reorder(xx, xxx, orderfun, na.rm = TRUE)
+                } else {
+                        resfact <- dataf[[nomfact]]
+                }
+        } else {
+                resfact <- factor(dataf[[nomfact]], levels = nlevels) 
+        }
+        # retour
+        resfact
+}
+```
+
+```{r dataexplore}
+
+#' The data
+#' ========
+
+# From help file : data frame with 32 observations on 11 variables.
+
+# [, 1]	 mpg	 Miles/(US) gallon
+# [, 2]	 cyl	 Number of cylinders
+# [, 3]	 disp	 Displacement (cu.in.)
+# [, 4]	 hp	 Gross horsepower
+# [, 5]	 drat	 Rear axle ratio
+# [, 6]	 wt	 Weight (1000 lbs)
+# [, 7]	 qsec	 1/4 mile time
+# [, 8]	 vs	 V/S
+# [, 9]	 am	 Transmission (0 = automatic, 1 = manual)
+# [,10]	 gear	 Number of forward gears
+# [,11]	 carb	 Number of carburetors
+
+# comment
+# :(http://stackoverflow.com/questions/18617174/r-mtcars-dataset-meaning-of-vs-variable:
+# car has a V engine or a Straight engine)
+
+# get the data
+data("mtcars")
+
+
+
+#' Data exploration
+#' ----------------
+
+#' compute means for  am = 0 / 1
+means <- mtcars %>%
+        group_by(am) %>%
+        summarise(meanmpg=mean(mpg))
+
+meanauto <- means[1,"meanmpg"]
+meanmanual <- means[2,"meanmpg"]
+
+#' add to data mtcars factor 'gerbox' = factor(am) ,
+#' but explicitly (auto / manual)
+# preserve rownames
+rownames0 <- rownames(mtcars)
+# mtcars <- mutate(mtcars, gearbox = factor(ifelse(am == 0, "auto", "manual")))
+mtcars <- mutate(mtcars,
+                 gearbox =
+                         factor(mtcars$am,
+                                labels = c("auto", "manual")))
+# verification
+# levels(mtcars$gearbox)
+# restore rwnames
+rownames(mtcars) <- rownames0
+
+#' Compare distributions
+# violin + box + points (jitter)
+gviolin <- ggplot(mtcars, aes(gearbox, mpg, color=gearbox)) +
+        geom_violin(mapping=aes(fill=gearbox),
+                    width=1.1, show.legend = FALSE, alpha = .2) +
+        geom_boxplot(width=.3) +
+        geom_jitter(width=.3, height=.0,
+                    alpha =.5, size = 2, color="black") +
+        scale_y_continuous(limits = c(5, 40)) +
+        guides(col = guide_legend(reverse = TRUE))+
+        labs(title = "Automatic vs manual gearbox : mpg distributions") +
+        coord_flip()
+
+# display graphs, works with ggplot2 and gtable graphs. sends graphs to default
+# or windows device (set the default in defdevice)
+displaygraph <- function(one.graph,
+                         windevice = defdevice,
+                         width = nfigwidth,
+                         height = nfigheight ) {
+        if (is.null(windevice)) {
+                grid.newpage()
+                grid.draw(one.graph)
+        } else {
+                windows(width = width, height = height)
+                grid.newpage()
+                grid.draw(one.graph)
+                Sys.sleep(defsleep)
+                dev.off()
+        }
+}
+
+# display
+# displaygraph(gviolin)
+
+
+
+
+#' Plotting the effect of every variable on mpg, conmparing automatic and manual transmissions
+#' -------------------------------------------------------------------------------------------
+
+# plotting function
+plotam <- function(varname, withlegend = FALSE) {
+        g <- ggplot(mtcars,
+               aes_(x = as.name(varname),
+                    y = quote(mpg),
+                    color = quote(gearbox))) +
+                geom_jitter(width= .3, height = .2, alpha =.5) +
+                geom_smooth(data = filter(mtcars, am ==0),
+                            method="lm", se= FALSE, size=.5) +
+                geom_smooth(data = filter(mtcars, am ==1),
+                            method="lm", se= FALSE, size=.5) +
+                ylab(NULL) +
+                # scale_color_discrete(guide_legend("am")) +
+                theme(legend.position = "right")
+        if (withlegend) {
+                g + guides(col = guide_legend(reverse = TRUE))
+        } else {
+                g + theme(legend.position = "none")
+        }
+}
+
+# test
+# plotam("wt")
+# plotam("wt" , withlegend=TRUE)
+
+# plot all variables except mpg, against am
+lpl <- lapply(X = setdiff(colnames(mtcars), c("am", "gearbox", "mpg")),
+              plotam)
+
+
+# put pplots together with a common legend):
+
+# get the legend from any one plot (the plot must have a legend)
+# extract legend
+# https://github.com/hadley/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs
+g_legend <- function(a.gplot){
+        tmp <- ggplot_gtable(ggplot_build(a.gplot))
+        leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+        legend <- tmp$grobs[[leg]]
+        return(legend)}
+
+mylegend <- g_legend(plotam("wt", withlegend = TRUE))
+
+
+# draw the plot
+# windows(width = 10, height = 6)
+title2 <- textGrob("Automatic vs manual gearbox:  mpg simple linear regressions") #,
+                   #gp = gpar(fontface="bold"))
+
+gg <- arrangeGrob(grobs = lpl,
+                  ncol = 3,
+                  top = title2,
+                  left = "mpg")
+
+slrg <- arrangeGrob(gg,
+                   mylegend, nrow=1, widths=c(10, 1))
+
+# to display
+# displaygraph(slrg)
+```
+
+```{r modelselection1, cache=TRUE, results="hide"}
+
+#' model selection
+#' ===============
+
+#' backwards elimination (without interaction)
+#' -------------------------------------------
+# start
+
+
+# testing function, not-really-so-great
+nextstep <- function(fit) {
+        sf <-  summary(fit)
+        sfc <- summary(fit)$coef[-1,]
+        rnames <- dimnames(sfc)[[1]]
+        ix <- match(max(sfc[,4] ), sfc[,4] )
+        # formula
+        fitfla <- formula(fit)
+        cfla <- as.character(fitfla)
+        cfla <- paste(cfla[2], cfla[1], cfla[3])
+        # result
+        if (sfc[ix,4] > 0.05) {
+                data.frame(nonsignif.var = rnames[ix],
+                           p.value =  round(sfc[ix, 4], 3),
+                           sigma = sf$sigma,
+                           Rsquared =  sf$r.squared,
+                           Adj.Rsquared = sf$adj.r.squared)
+        } else {
+                data.frame(nonsignif.var = "all significant",
+                           formula = cfla,
+                           sigma = sf$sigma,
+                           Rsquared =  sf$r.squared,
+                           Adj.Rsquared = sf$adj.r.squared)
+        }
+}
+
+
+# initialize the removel process and create functions
+initrem <- function() {
+        i <- 1
+        elim <- character(0)
+        step = NULL
+        list(remvar = function() {
+                step <<- nextstep(fit)
+                elim[i] <<- paste0(step$nonsignif.var,
+                                  " (p.value:",
+                                  round(step$p.value, 2) , ")" )
+                i <<- i + 1
+                step },
+             whatstep = function() {step},
+             stephist = function() {elim}
+        )
+}
+
+temp <- initrem()
+remvar <- temp[["remvar"]]
+whatstep <- temp[["whatstep"]]
+stephist <- temp[["stephist"]]
+
+# remove var function
+# remvar <- function() {
+#         step <<- nextstep(fit)
+#         elim[i] <<- paste(step$nonsignif.var, "(p.value =", round(step$p.value, 2) , ")" )
+#         i <<- i + 1
+# }
+
+
+
+
+# first iteration
+fit <- lm(mpg ~ carb + hp + disp + cyl + wt + gear + am + drat + vs + qsec, mtcars)
+# show essentials
+summary(fit)
+remvar( )
+stephist()
+
+
+# 2 removing cyl
+fit <- lm(mpg ~ carb + hp + disp + wt + gear + am + drat + vs + qsec, mtcars)
+# show essentials
+summary(fit)
+remvar( )
+stephist()
+
+
+# removing vs
+fit <- lm(mpg ~ carb + hp + disp + wt + gear + am + drat + qsec, mtcars)
+# show essentials
+summary(fit)
+remvar( )
+stephist()
+
+
+# removing carb
+fit <- lm(mpg ~ hp + disp + wt + gear + am + drat + qsec, mtcars)
+# show essentials
+summary(fit)
+remvar( )
+stephist()
+
+
+# removing gear
+fit <- lm(mpg ~ hp + disp + wt + am + drat + qsec, mtcars)
+# show essentials
+summary(fit)
+remvar( )
+stephist()
+
+
+# removing drat
+# show essentials
+summary(fit)
+remvar( )
+stephist()
+
+
+# removing disp
+fit <- lm(mpg ~ hp + wt + am + qsec, mtcars)
+# show essentials
+summary(fit)
+remvar( )
+stephist()
+
+# removing hp final step
+fit <- lm(mpg ~ wt + am + qsec, mtcars)
+# show essentials
+sf1 <- summary(fit)
+try(remvar( ))
+sh <- stephist() # store removal history
+
+
+# values to retain and display
+
+# test list of removals (char)
+remlist <- paste(sh, collapse = ", ")
+
+firstformula <- as.character(formula(fit))
+firstformula <- paste(firstformula[2], firstformula[1], firstformula[3])
+# use sf1$adj.r.squared for the text
+```
+
+```{r diag1residuals,  warning=FALSE, results= "hide"}
+#' mpg ~ wt + am + qsec diagnostics
+#' --------------------------------
+
+# residuals plots
+
+# Store residuals and fitted values
+mtcars1 <- mutate(mtcars, resid1 = rstudent(fit),
+                  fitted.values = fitted.values(fit))
+rownames(mtcars1) <- rownames0
+
+# residuals plots
+# ---------------
+# variables in the final model
+vnames <- c("fitted.values", "wt", "am", "qsec")
+
+
+resvarplot <- function(varname) {
+        ggplot(mtcars1, aes_(as.name(varname) , quote(resid1))) +
+                geom_point(alpha = .5) +
+                geom_smooth(size = .5, linetype = 1, span = 1) +
+                scale_y_continuous(name = NULL) +
+                scale_x_continuous(name = NULL, breaks=NULL)
+}
+
+# test
+# resvarplot(varname = "wt")
+# compute aull residuals plots
+lpres1 <- lapply(vnames, FUN=resvarplot)
+
+# title
+title <- textGrob("Model: mpg ~ wt + am + qsec (without interaction)", gp=gpar(fontsize=11))
+
+
+gr1 <- arrangeGrob(grobs = lpres1,
+          #ncols=3
+          layout_matrix = matrix(c(1,2,3,4), nrow=1),
+          # left = "residuals",
+          top = title
+          )
+
+# to display
+# displaygraph(gr1)
+```
+
+```{r addinteraction, results= "hide", warning=FALSE }
+#' Adding interaction am:wt
+#' ------------------------
+
+fit2 <- lm(mpg ~ wt + am*wt + qsec, mtcars)
+swi <- summary(fit2)
+# swi
+
+# Store residuals and fitted values
+mtcars2 <- mutate(mtcars, resid1 = rstudent(fit2),
+                  fitted.values = fitted.values(fit2))
+rownames(mtcars2) <- rownames0
+
+
+# residuals plots
+# ---------------
+# variables in the final model
+vnames <- c("fitted.values", "wt", "am", "qsec")
+
+resvarplot2 <- function(varname) {
+        ggplot(mtcars2, aes_(as.name(varname) , quote(resid1))) +
+                geom_point(alpha = .5) +
+                geom_smooth(size = .5, linetype = 1, span = 1) +
+                scale_y_continuous(name = NULL)
+}
+
+lpres2 <- lapply(vnames, FUN=resvarplot2)
+
+title <- textGrob("Model: mpg ~ wt*am + qsec (with interaction)", gp=gpar(fontsize=11))
+
+gr2 <- arrangeGrob(grobs = lpres2,
+                  #ncols=3
+                  layout_matrix = matrix(c(1,2,3,4), nrow=1),
+                  # left = "residuals",
+                  top = title
+)
+
+
+
+# combine residual plots in one grob
+grall <- arrangeGrob(grobs=list(gr1,gr2), ncol = 1, left = "residuals", heights = c(4, 5))
+
+# displaygraph(grall)
+
+
+#' Try Adding interaction am:qsec + anova test ==> no
+#' --------------------------------------------------
+
+fit3 <- lm(mpg ~ wt + am*wt + qsec + am*qsec, mtcars)
+s <- summary(fit3)
+s
+
+an <- anova(fit, fit2, fit3)
+an
+
+
+# Analysis of Variance Table
+#
+# Model 1: mpg ~ wt + am + qsec
+# Model 2: mpg ~ wt + am * wt + qsec
+# Model 3: mpg ~ wt + am * wt + qsec + am * qsec
+# Res.Df    RSS Df Sum of Sq       F   Pr(>F)
+# 1     28 169.29
+# 2     27 117.28  1    52.010 11.6099 0.002145 **
+# 3     26 116.47  1     0.802  0.1791 0.675630
+# ---
+#  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+# p-values
+anpv <- an$`Pr(>F)`
+
+#  NA 0.002144762 0.675630240
+
+# get individual p-values
+# anpv[2]
+# anpv[3]
+
+```
+
+```{r removingpoints1, results= "hide", warning=FALSE, cache=TRUE}
+
+mtcars2$model <- rownames(mtcars) #reestablish row names
+
+
+# step A
+# -----
+
+# fit the model
+fit2A <- lm(mpg ~ wt + am*wt + qsec, mtcars2)
+s <- summary(fit2A)
+sc <- data.frame(s$coefficients)
+sc$coeff <- rownames(sc)
+
+
+
+influencegraph <- function(fitmodel, labsize = 2, labnumber = 5,
+                           ylim1 = c(NA, NA), ylim2 = c(NA, NA),
+                           title = "Cook's distance and |dfbetas|") {
+        dfb <- dfbetas(fitmodel)
+        # important dfbetas
+        idfb <- dfb[ , c("am", "wt:am")]
+        idfb <- as.data.frame(idfb)
+        idfb$model <- rownames(idfb)
+        idfb$cook <- cooks.distance(fitmodel)
+        colnames(idfb) <- c("am","wt_am", "model", "cook" )
+
+        idfb <- idfb %>%
+                mutate(absam = abs(am),
+                       abswtam =abs(wt_am),
+                       maxeff=ifelse (absam > abswtam, absam, abswtam),
+                       mineff=ifelse (absam > abswtam, abswtam, absam)) %>%
+                arrange(desc(maxeff))
+
+        idfb$model <- orderfact(dataf = idfb, nomfact = "model", ordervar = "maxeff")
+        idfb$labels <- rep("", nrow(idfb))
+        for (i in 1:labnumber) {idfb$labels[i] <- as.character(idfb$model[i])}
+        # idfb$ylab <- idfb$mineff
+
+        gdfb <- ggplot(idfb, aes(as.numeric(model))) +
+                geom_point(aes(y = absam, color= "am")) +
+                geom_point(aes(y = abswtam, color= "wt_am")) +
+                scale_color_discrete("coefficient") +
+                labs(x="Car model", y = "Abs(dfbeta)") +
+                scale_y_continuous(limits = ylim1) +
+                scale_x_continuous(breaks = NULL) +
+                # theme(axis.text.x = element_text(angle=90, hjust = .5, vjust = .5)) +
+                geom_text(aes(y = mineff, label=labels),
+                          size = labsize, angle=90, hjust = 1, vjust = .5, nudge_y=-.01)
+
+        gcd <- ggplot(idfb, aes(as.numeric(model), cook)) +
+                geom_point() +
+                scale_y_continuous(limits = ylim2) +
+                scale_x_continuous(breaks = NULL) +
+                labs(x="Car model", y = "Cook's distance") +
+                geom_text(aes(y = cook, label=labels),
+                          size = labsize, angle=90, hjust = 1, vjust = .5, nudge_y=-.005)
+        grtitle <- textGrob(title)
+
+        # return combined graph
+        arrangeGrob(grobs =list(gdfb,gcd), layout_matrix=matrix(c(1,2), nrow = 1), top = grtitle)
+}
+
+cbA <- influencegraph(fit2A, labnumber = 7, ylim1 = c(0,.65), ylim2 = c(0,.27), title = "Initial situation")
+# displaygraph(cbA)
+
+# initialize removal vector
+pointremovals <- character(0)
+
+
+# Step B: Removing Chrysler Imperial
+# ---------------------------------
+
+mtcars2B <- filter(mtcars2, model != "Chrysler Imperial")
+rownames(mtcars2B) <- mtcars2B$model
+
+# fit2B <- lm(mpg ~ am*wt + qsec, mtcars2B)
+# s <- summary(fit2B)
+# s
+fit2B <- lm(mpg ~ wt + am*wt + qsec, mtcars2B)
+s <- summary(fit2B)
+sc <- data.frame(s$coefficients)
+sc$coeff <- rownames(sc)
+
+
+
+# check Cook's D + dfbetas
+cbB <- influencegraph(fit2B, labnumber = 6, ylim1 = c(0,.65), ylim2 = c(0,.27),
+                      title = "After removing 'Chrysler Imperial'")
+# displaygraph(cbB)
+
+
+# register removal
+pointremovals <- c(pointremovals, "Chrysler Imperial")
+
+
+# Step C: Removing  Maserati Bora,
+# -------------------------------
+
+mtcars2C <- filter(mtcars2B, model != "Chrysler Imperial", model != "Maserati Bora" )
+rownames(mtcars2C) <- mtcars2C$model
+
+fit2C <- lm(mpg ~ wt + am*wt + qsec, mtcars2C)
+s <- summary(fit2B)
+sc <- data.frame(s$coefficients)
+sc$coeff <- rownames(sc)
+
+# register removal
+pointremovals <- c(pointremovals, "Maserati Bora")
+
+
+cbC <- influencegraph(fit2C, labnumber = 5, ylim1 = c(0,.65), ylim2 = c(0,.27),
+                      title = "After removing 'Chrysler Imperial'+'Maserati Bora'")
+# displaygraph(cbC)
+
+
+
+# Step D: Removing  "Toyota Corolla",
+# -------------------------------
+
+mtcars2D <- filter(mtcars2C, model != "Toyota Corolla")
+rownames(mtcars2D) <- mtcars2D$model
+
+fit2D <- lm(mpg ~ wt + am*wt + qsec, mtcars2D)
+s <- summary(fit2D)
+sc <- data.frame(s$coefficients)
+sc$coeff <- rownames(sc)
+
+
+# register removal
+pointremovals <- c(pointremovals, "Toyota Corolla")
+
+
+cbD <- influencegraph(fit2D, labnumber = 3, ylim1 = c(0,.65), ylim2 = c(0,.27),
+                      title = "After removing 'Chrysler Imperial'+'Maserati Bora'+'Toyota Corolla'")
+# displaygraph(cbD)
+
+
+
+# Step E: Removing  "Fiat 128",
+# -----------------------------
+
+mtcars2E <- filter(mtcars2D, model != "Fiat 128")
+rownames(mtcars2E) <- mtcars2E$model
+fit2E <- lm(mpg ~ wt + am*wt + qsec, mtcars2E)
+s <- summary(fit2E)
+sc <- data.frame(s$coefficients)
+colnames(sc) <- c("Estimate", "Std.Error", "t-value", "Pr(>|t|)")
+
+
+# register removal
+pointremovals <- c(pointremovals, "Fiat 128")
+
+cbE <- influencegraph(fit2E, labnumber = 3, ylim1 = c(0,.65), ylim2 = c(0,.27),
+                      title = "After removing 'Chrysler Imperial'+'Maserati Bora'+'Toyota Corolla'+'Fiat 128'" )
+# displaygraph(cbE)
+
+
+
+#try putting these graphs together
+
+# displaygraph(grid.arrange(grobs=list(cbA, cbB, cbC),  ncol = 1))
+# displaygraph(grid.arrange(grobs=list(cbD, cbE),  ncol = 1))
+
+allremgraph <- arrangeGrob(grobs=list(cbA, cbB, cbC, cbD, cbE),  ncol = 1)
+allremovals <- paste(pointremovals, collapse = ", ")
+
+# Diagnostics again (checking basic assumptions)
+# ==> displayed later
+# pr <- par("mfrow")
+# par(mfrow=c(1,3))
+# for (i in 1:3) {plot(fit2E, which = i)}
+# par(mfrow=pr)
+
+# ==> normality assumption believable,
+# uncorrelated residuals, homoscedasticity
+
+```
+
+```{r conclusion1, results = "hide"}
+swiar <- summary(fit2E)
+sfc <- swiar$coefficients
+
+
+# Point estimation
+# neutral weight
+
+nwt <- - (sfc[3,1] / sfc[5,1])
+deltaslope <- sfc[5,1]
+
+
+
+# ==> for small wt, manual is better, for high wt auto is better.
+# balance point, w = 3(thousands of lb)
+# The manufactureres might share a similar view, as the overlap zone goes from circa
+
+mta <- filter(mtcars, am==0)
+mtm <- filter(mtcars, am==1)
+min(mta$wt) # 2.465
+max(mtm$wt) # 3.57
+
+```
+```{r confints, results = "hide", warning=FALSE, cache=TRUE}
+
+
+# confidence interval for the slope coeff(wt:am)
+
+Int <- confint(fit2E, "wt:am")[1, ]
+#Int <- sc[5,1] + c(-1,1) * qt(df = nrow(mtcars2E) - 4, p = .975) * sc[5,2] # strangely different??
+# interval notation
+Intslope <- paste0("[", format( Int[1] ,digits =3), " ; ", format( Int[2] ,digits =3), "]")
+negIntslope <- paste0("[", format( -Int[1] ,digits =3), " ; ", format( -Int[2] ,digits =3), "]")
+
+
+
+
+
+#'
+#' Bootstrapping (with package 'boot' and custom plotting function)
+#' ----------------------------------------------------------------
+#'
+
+options(digits = 5)
+# function to obtain stat = wt_0
+bs <- function(formula, data, indices) {
+        d <- data[indices,] # allows boot to select sample
+        fit <- lm(formula, data=d)
+        cf <- coef(fit)
+        ret <-  - cf["am"] / cf["wt:am"] # should we correct bias ???
+        names(ret) <- "wt_0" # useful ?
+        return(ret)
+}
+
+# initial results (on the original sample)
+orig <- bs(formula = mpg ~  qsec + wt*am, data=mtcars2E, indices= 1:nrow(mtcars2E))
+
+
+# bootstrapping
+set.seed(20)
+results <- boot(data=mtcars2E, statistic=bs,
+                R = bootstriter, formula = mpg ~ qsec + wt*am)
+
+boot.ci(results, type = "bca")
+
+
+
+
+# customized plotting function
+ggplotboot <- function(boot.out, index, cnames, title, trim = 0.015, conflevel = .95, digits = 3) {
+        if (missing(cnames)) {cnames= paste0(rep("c", ncol(boot.out$t)),
+                                            as.character(1:ncol(boot.out$t)))}
+        if (missing(title)){title <- paste("Bootstrap distribution of ", cnames[index]) }
+
+        #prepare data
+        dfres <- as.data.frame(boot.out$t) # bootstrap dataframe of results
+        colnames(dfres) <- cnames
+        origres <- boot.out$t0 # original result
+        names(origres) <- cnames
+
+        lim <- quantile(dfres[[index]], probs = c(trim, 1 - trim), na.rm = TRUE)
+        varname <- cnames[index]
+        cfint <- boot.ci(results, type="bca", index= index, conf = conflevel)
+        # confidence limits
+        cflim <- cfint$bca[4:5]
+        # data for vertical lines
+        vlines <- data.frame(x = c(cflim[1],  origres[[index]], c(cflim[2])),
+                             lt = factor(c(2,1,2)) )
+        # data for text annots
+        clabs <- data.frame(lab = paste( c("BCa conf.limit =" , "point est. =", "BCa conf.limit ="),
+                                         round(vlines[["x"]], digits)),
+                            x = vlines[["x"]],
+                            y = c(.1, .15 , .1),
+                            angl = c(90,0,90),
+                            hjust= c(0,.5,0),
+                            col = vlines[["lt"]],
+                            nudge_x = c(-(lim[2] - lim[1]) / 80, 0, (lim[2] - lim[1]) / 80))
+
+
+        ggplot(dfres, aes_(as.name(varname))) +
+                geom_density(fill = "lightblue") +
+                geom_vline(data=vlines, aes(xintercept=x, linetype = lt, color = lt)) +
+                geom_text(data = clabs, aes(x + nudge_x, y, label= lab, angle = angl,
+                                            hjust = hjust,  color = col), size = 2.5) +
+                scale_x_continuous(limits = lim) +
+                scale_color_manual(limits = c(1,2), breaks = c(1,2),
+                                   values = c("blue", "red")) +
+                labs(title = title) +
+                theme(legend.position = "none")
+
+}
+
+
+
+
+
+# confidence interval
+bcaint <- boot.ci(results, type = "bca")
+bcaint <- bcaint$bca[4:5]
+
+# interval notation
+Intw0 <- paste0("[", format( bcaint[1] ,digits =3), " ; ", format( bcaint[2] ,digits =3), "]")
+
+```
+
+
+
+
+Report
+======
+
+
+Executive Summary 
+-----------------
+**Problem**: What type of gearbox is the best for improving a car's fuel efficiency (gas mileage `mpg`)?\
+**Answer**: Based on a linear model of the fuel efficiency (`mpg`) of the cars in the dataframe 'mtcars', it appears that, in order to get a higher mpg, a manual gearbox is better than an automatic one for the lighter cars, and that the contrary is true for the heavier cars: for a car weighing about `r round(nwt,0) * 1000` pounds, the two gearbox types are equivalent, and for a car weighing 1000 pounds less than the neutral weight `r round(nwt,0) * 1000` pounds,  a manual gearbox provides an advantage of about `r - round(deltaslope, 1)` miles per gallon over an automatic gearbox. Conversely, for a car heavier than the neutral weight, an automatic gearbox provides an improvement of about `r - round(deltaslope, 1)` miles per gallon over a manual gearbox, for each increase of 1000 pounds in weight. Note: the difference between gearbox types is significant, but these figures are imprecise point estimates, due to the small sample size.  
+
+Source document
+---------------
+The source (.Rmd) document for the present report can be found at: [this address](http://stackoverflow.com/questions/33399203/keyboard-shortcut-for-inserting-roxygen-comment-start)
+
+
+Short preliminary exploration
+-----------------------------
+
+A quick exploration shows that, overall, in the sample, the cars fitted with a manual gearbox have a higher mpg than those with an automatic one (mean = `r meanmanual` mpg for manual, vs `r meanauto` for automatic, see graph _(@distrib)_ in appendix ). However, scatterplots of mpg against each other variable  in the set (graph _(@scatter)_ in appendix) show, for some independent variables, a different simple regression slope for each gearbox type. This suggests that, depending on the other variables considered in the model , the influence of the gearbox type `am` on `mpg` might be more complex than a single constant effect.
+
+
+Model selection process {#sec:modelselection}
+---------------------------------------------
+
+* **First approach: backwards elimination** . We start with a model with all the possible independent variables and then remove at each step the variable whith the least significantly nonzero coefficient, starting with the
+highest p-values. We then refit a new model without that variable, and iterate the process until all the variables coefficients in the model are significantly nonzero.\
+Thus, we eliminate one by one `r remlist`, and the resulting model formula is **`r firstformula`**, with an adjusted $R^2$ of `r sf1$adj.r.squared`.  The variable of interest `am` is part of this model.
+
+* **First diagnostic**. When plotting the residuals against the fitted values (see graph _(@diagmodel1)_), a pattern appears, with more positive residuals at each end of the scale, and more negative residuals in the middle. The same effect is observed when plotting residuals against `wt`. This reminds us of the very different regression slopes in plot _(@scatter)_ (particularly for mpg ~ wt), and prompts us to add an interaction term `am*wt`. We might also want to try to add interaction `am*qsec`.
+
+* **Adding interaction:** we add `am*wt`, thus considering the model `mpg ~ am*wt + qsec`. This model is better than the previous one, with an adjusted $R^2$ = `r format(swi$adj.r.squared, 2)`. An anova test confirms that:
+    + the additional `am*wt` term is a significant improvement (p.value = `r format(anpv[2], digits=3)`), 
+    + adding the interaction `am*qsec` would **not** be justified (p-value = `r anpv[3]`, and all coefficients becoming non-significants). 
+We thus choose the model: `mpg ~ am*wt + qsec` . The residuals plots (plot _(@diagmodel1)_ ) now are much more acceptable.
+
+* **Diagnostic 2: Influential points removal**: The model formula is `mpg ~ am*wt + qsec`. However, checking for influential points, we notice that (plot _(@diagmodel2)_) some cars seem to alter substantially the results. We choose to remove some points, in order to reduce this influence. We wish to remove the points with the highest Cook's distance, but more importantly those with large $dfbeta_{am}$  and $dfbeta_{am:wt}$, as $\beta_{am}$ and $\beta_{wt:am}$ are critical here (see below). We thus remove one by one `r allremovals`.
+The diagnostics plots after all removals (plot _(@diagmodel3)_) are satisfactory, despite three severe outliers.
+
+* **Finally**: Adjusted $R^2$ = `r format(swiar$adj.r.squared, 2)`, with the estimated coefficients:
+```{r coeff, results = 'asis'}
+options(xtable.comment = FALSE)
+xtable(sc, label = NULL, caption = NULL, digits = 3)
+```
+ 
+
+Using the model to measure the influence of the gearbox type
+------------------------------------------------------------
+
+**(a) Principle**
+
+* **The model equation** is: $mpg =  \beta_0 + \beta_{am} am + \beta_{qsec} qsec + \beta_{wt} wt + \beta_{am:wt} am \cdot wt$    where $\beta_0$ is the intercept and $\beta_x$ is the coefficient of x. Thus, this general equation can be written as:
+
+    * if am = 1 (manual), $mpg = mpg_1 =  (\beta_0 + \beta_{am}) + \beta_{qsec} qsec + (\beta_{wt} + \beta_{am:wt}) wt$
+    * if am = 0 (automatic), $mpg = mpg_0 =  \beta_0 + \beta_{qsec} qsec + \beta_{wt} wt$
+ 
+Thus the **difference** between manual and automatic is $\Delta = mpg_1 - mpg_0 = \beta_{am} + \beta_{am:wt} wt$
+
+So manual and automatic gearbox are equivalent when $\Delta$ = 0, that is: $wt = wt_0 = -\frac{\beta_{am}}{\beta_{am:wt}}$ and the slope of the difference $\Delta$ is $\beta_{am:wt}$, i.e. a variation of weight of 1000 pounds increases $\Delta$ by  $\beta_{am:wt}$ .
+
+
+**(b) Point estimation and confidence intervals**\
+From the [previous section](#sec:modelselection) we have the point estimates: $\beta_{am} \approx$ `r sfc[3,1]` and  $\beta_{am:wt} \approx$  `r sfc[5,1]`.
+
+* **For $\beta_{am:wt}$** we can use the previous point estimate and the confidence interval given by the function `confint()`. We get: point estimation: **`r sfc[5,1]`**, 95% confidence interval: `r Intslope`
+* **For $wt_0 = -\frac{\beta_{am}}{\beta_{am:wt}}$**, we cannot and we must resort to a Bootstrap procedure^[<https://www.coursera.org/learn/statistical-inference/home/week/4>] (using the `boot` package with `r bootstriter` simulated samples). We get (see graph *(@bootstrap)*): point estimation: **`r nwt`** , 95% confidence interval `r Intw0`
+
+
+Conclusion
+----------
+For a weight of about $wt_0 \approx$ `r round(nwt,0) * 1000` pounds, the expected mpg for manual and automatic gearboxes are the same.
+If the car weight is 1000 pounds less than $wt_0$, the expected mpg of a car with a manual gearbox is higher than that of the same car with a manual gearbox by $-\beta_{am:wt} \approx$ `r - round(deltaslope, 1)` miles per gallon. The reverse is true if the car is 1000 pounds heavier than $wt_0$ .
+
+These figures are rather rough estimates: a 95% confidence interval for $wt_0$ is `r Intw0` (thousands of pounds) and for $-\beta_{am:wt}$, it is `r negIntslope` (miles per gallon per thousand pounds)   
+The relatively small sample size (`r nrow(mtcars2E)` after outlier removal) does not allow a better accuracy.
+
+
+
+
+
+Appendix: figures
+=================
+
+* (@distrib) mpg distributions
+
+```{r app_dist, fig.height=vsfigheight, fig.width=lfigwidth, warning=FALSE}
+displaygraph(gviolin)
+```
+
+* (@scatter) Scatterplots
+
+```{r app_scat, fig.height=sfigheight + .2, fig.width=lfigwidth }
+displaygraph(slrg)
+```
+
+* (@diagmodel1) Residuals plots for linear model with and without interaction, 
+
+```{r app_residuals, fig.height=sfigheight - .3}
+displaygraph(grall)
+```
+
+* (@diagmodel2) Diagnostics plot for checking and removing influential points.
+
+```{r app_removepoint,fig.height=vlfigheight + 2.8 , fig.width=vlfigwidth}
+displaygraph(allremgraph)
+```
+
+* (@diagmodel3) Final check. The basic regression assumptions seem to hold
+
+```{r app_finalcheck, fig.height=sfigheight-.5, fig.width=lfigwidth}
+pr <- par("mfrow")
+par(mfrow=c(1,3))
+for (i in 1:3) {plot(fit2E, which = i)}
+par(mfrow=pr)
+```
+
+* (@bootstrap) Bootstrap: Resampling distribution of $wt_0$. 
+
+```{r app_bootstrap, fig.height=vsfigheight, fig.width=lfigwidth, warning=FALSE}
+ggplotboot(results, index=1, trim=0.01, cnames =c("wt_0"))
+```
+
+
+

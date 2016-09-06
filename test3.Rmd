@@ -1,0 +1,221 @@
+---
+title: 'Fuel efficiency : Is a manual gearbox better than an automatic?'
+output: pdf_document
+fontsize: 12pt
+geometry: margin = 1in
+date: "Bruno Fischer Colonimos, 19/08/2016"
+subtitle: "Test2.Rmd"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+vsfigheight <-  2.5
+vsfigwidth <-  2.5
+sfigheight <-  3
+sfigwidth <-  3
+nfigheight <-  4
+nfigwidth <-  4
+lfigheight <-  5
+lfigwidth <-  7
+knitr::opts_chunk$set(fig.height = nfigheight, fig.width = nfigwidth)
+```
+
+```{r libs, include=FALSE}
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(boot)
+library(xtable)
+```
+
+
+```{r moreopts }
+defdevice <- NULL # NULL (print on current device), or 'win' (but anything goes)
+defsleep <- 10 # default waiting time in seconds
+
+bootstriter <-  10000 # bootstrap iterations
+```
+
+
+
+```{r allcode, cache = TRUE}
+theme_set(theme_grey(base_size = 10))
+
+# get the data
+data("mtcars")
+
+
+
+#' Data exploration
+#' ----------------
+
+#' compute means for  am = 0 / 1
+means <- mtcars %>%
+        group_by(am) %>%
+        summarise(meanmpg=mean(mpg))
+
+meanauto <- means[1,"meanmpg"]
+meanmanual <- means[2,"meanmpg"]
+
+#' add to data mtcars factor 'gerbox' = factor(am) ,
+#' but explicitly (auto / manual)
+# preserve rownames
+rownames0 <- rownames(mtcars)
+# mtcars <- mutate(mtcars, gearbox = factor(ifelse(am == 0, "auto", "manual")))
+mtcars <- mutate(mtcars,
+                 gearbox =
+                         factor(mtcars$am,
+                                labels = c("auto", "manual")))
+# verification
+# levels(mtcars$gearbox)
+# restore rwnames
+rownames(mtcars) <- rownames0
+
+#' Compare distributions
+# violin + box + points (jitter)
+gviolin <- ggplot(mtcars, aes(gearbox, mpg, color=gearbox)) +
+        geom_violin(mapping=aes(fill=gearbox),
+                    width=1.1, show.legend = FALSE, alpha = .2) +
+        geom_boxplot(width=.3) +
+        geom_jitter(width=.3, height=.0,
+                    alpha =.5, size = 2, color="black") +
+        scale_y_continuous(limits = c(5, 40)) +
+        guides(col = guide_legend(reverse = TRUE))+
+        labs(title = "Automatic vs manual gearbox : mpg distributions") +
+        coord_flip()
+
+# display graphs, works with ggplot2 and gtable graphs. sends graphs to default
+# or windows device (set the default in defdevice)
+displaygraph <- function(one.graph,
+                         windevice = defdevice,
+                         width = nfigwidth,
+                         height = nfigheight ) {
+        if (is.null(windevice)) {
+                grid.newpage()
+                grid.draw(one.graph)
+        } else {
+                windows(width = width, height = height)
+                grid.newpage()
+                grid.draw(one.graph)
+                Sys.sleep(defsleep)
+                dev.off()
+        }
+}
+
+# display
+# displaygraph(gviolin)
+
+
+
+
+#' Plotting the effect of every variable on mpg, conmparing automatic and manual transmissions
+#' -------------------------------------------------------------------------------------------
+
+# plotting function
+plotam <- function(varname, withlegend = FALSE) {
+        g <- ggplot(mtcars,
+               aes_(x = as.name(varname),
+                    y = quote(mpg),
+                    color = quote(gearbox))) +
+                geom_jitter(width= .3, height = .2, alpha =.5) +
+                geom_smooth(data = mtcars,
+                            method="lm", se= FALSE, size=.5) +
+                # geom_smooth(data = filter(mtcars, am ==0),
+                #             method="lm", se= FALSE, size=.5) +
+                # geom_smooth(data = filter(mtcars, am ==1),
+                #             method="lm", se= FALSE, size=.5) +
+                ylab(NULL) +
+                # scale_color_discrete(guide_legend("am")) +
+                theme(legend.position = "right")
+        if (withlegend) {
+                g
+        } else {
+                g + theme(legend.position = "none")
+        }
+}
+
+# test
+# plotam("wt")
+# plotam("wt" , withlegend=TRUE)
+
+# plot all variables except mpg, against am
+lpl <- lapply(X = setdiff(colnames(mtcars), c("am", "gearbox", "mpg")),
+              plotam)
+
+
+# put pplots together with a common legend):
+
+# get the legend from any one plot (the plot must have a legend)
+# extract legend
+# https://github.com/hadley/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs
+g_legend <- function(a.gplot){
+        tmp <- ggplot_gtable(ggplot_build(a.gplot))
+        leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+        legend <- tmp$grobs[[leg]]
+        return(legend)}
+
+mylegend <- g_legend(plotam("wt", withlegend = TRUE))
+
+
+# draw the plot
+# windows(width = 10, height = 6)
+title2 <- textGrob("Automatic vs manual gearbox:  mpg simple linear regressions") #,
+                   #gp = gpar(fontface="bold"))
+
+gg <- arrangeGrob(grobs = lpl,
+                  ncol = 3,
+                  top = title2,
+                  left = "mpg")
+
+slrg <- arrangeGrob(gg,
+                   mylegend, nrow=1, widths=c(10, 1))
+
+# to display
+# displaygraph(slrg)
+
+
+
+
+```
+
+Part 1
+=================
+
+some text.
+
+
+\begin{equation}
+\label{eq-abc}
+a^3 + b^3 = c^3
+\end{equation}
+
+\begin{equation}
+\label{eq-txt}
+50 \text{ apples} \times 100 \text{ apples} = \text{lots of apples}^2
+\end{equation}
+
+
+
+
+
+as you can see from \ref{eq-abc}, this is what ?
+
+
+Appendix: figures
+=================
+
+* (@distrib) mpg distributions
+
+```{r app_dist, fig.height=vsfigheight, fig.width=lfigwidth, warning=FALSE}
+displaygraph(gviolin)
+```
+
+* (@scatter) Scatterplots
+
+```{r app_scat, fig.height=sfigheight + .2, fig.width=lfigwidth }
+displaygraph(slrg)
+```
+
+
