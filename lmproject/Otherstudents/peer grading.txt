@@ -1,0 +1,113 @@
+
+
+=====================================================================================
+1. Bill Martersteck
+
+
+Hi Bill. Good work! 
+I have some comments and suggestions:
+
+o - Diagnostics plot of your model: I disagree with your interpretation of the plots: 
+a) I think the Scale-location plot clearly shows a non-constant variance (follow the red smoother...), and
+b) the Residuals vs Fitted plot exhibits a V-pattern, with more positive residuals at each end of the scale. The implication is that the situation might be more complex than the one you describe...  
+
+o - Executive summary : 
+your summary presents the problem, but does not satisfactorily report your findings: we want the answer to the question that you stated: "Is an automatic or manual transmission better for MPG?"
+We do not have it here, so the onlooker is forced to read the whole report if he wishes the answer. It would be an easy and great improvement to state briefly here your conclusion.
+
+o - Conclusion:
+You do not provide the reader with any appreciation of how accurate is the advantage of manual transmission ( 2.9 mpg, you say). A confidence interval would have been necessary. (It was explicitly stated in the assignment subject that such measures were a requirement...)
+
+Best regards.
+
+
+=====================================================================================
+2. Georg Graner
+
+Hi Georg. Good work! 
+I have some comments and remarks:
+
+o - Executive summary : 
+The part titled "Executive Summary" is not a summary: it just states the problem, but does nothing else. The summary should briefly summarize the report (from problem to main conclusion).
+
+o - Exploratory analysis
+This part is missing. Your presentation of the data is necessary, but does not qualify as EDA. A t-test is not an exploratory tool, rather a tool for statistical inference. See, for example, Wikipedia: 
+"Exploratory data analysis (EDA) is an approach to analyzing data sets to summarize their main characteristics, often with visual methods. A statistical model can be used or not, but primarily EDA is for seeing what the data can tell us beyond the formal modeling or hypothesis testing task. Exploratory data analysis was promoted by John Tukey to encourage statisticians to explore the data, and possibly formulate hypotheses that could lead to new data collection and experiments."
+ ==> you could, by displaying the data in different ways, find ideas about how to model it (interaction ?)
+ 
+o - Stepwise regression
+Nice. Thank you. I did not know the R function step(). Yes, I know stepwise regression is controversial, but it is a start.
+
+o - Statistical inference: "Quantifying the uncertainty in the conclusions"
+The criterion in the rubrics reads "Did the student quantify the uncertainty in their conclusions and/or perform an inference correctly?". You report an avantage of 2.9 mpg for the manual transmission, but you should say how accurate is this statement (confidence interval).
+
+o - Not so important: appendix of figures:
+The subject reads (submission page) "... The appendix can only include figures". yours also includes a test. I do not think it matters much.
+
+Best regards.
+
+
+=====================================================================================
+2. Sebastian Kollmann
+
+Hi Sebastian. Good work! 
+I have some comments and remarks:
+
+o - Executive summary : 
+The part titled "Executive Summary" is not a summary: it just presents the data. The summary should briefly summarize the report (from problem to main conclusion).
+
+o - Exploratory analysis
+This part is missing. you only put in the appendix a boxplot comparing manual to automatic, but you do not use it as a support for modelling. See, for example, Wikipedia: 
+"Exploratory data analysis (EDA) is an approach to analyzing data sets to summarize their main characteristics, often with visual methods. A statistical model can be used or not, but primarily EDA is for seeing what the data can tell us beyond the formal modeling or hypothesis testing task. Exploratory data analysis was promoted by John Tukey to encourage statisticians to explore the data, and possibly formulate hypotheses that could lead to new data collection and experiments."
+ ==> you could, by displaying the data in different ways, find ideas about how to model it (interaction ?)
+ 
+o - Stepwise regression
+Nice. BUT: in the resulting model, the coefficient of `am` (curiously labelled ammanual in the printout, contrary to the formula in the "call") is not significantly different from zero, so the variable **should be excluded from the model**. Same thing with `cyl8`. Something must be wrong. Anyway, if you use this, you should conclude that there is no significant difference in mpg brought by `am`...
+
+o - Conclusion: 
+You do not quantify anything, nor the uncertainty, so there is not really an answer to the question. Overall , you just base your conclusion on your boxplot, not on the model (which would yield more powerful results, if it was ok...)
+
+
+Best regards.
+
+=====================================================================================
+Sathya
+
+
+Hi Sathya. That was a lot of real hard work!  
+I have many disagreement points, comments and remarks, which are meant to offer my ideas as possible improvements. I mean here no disrespect, even if i really do disagree.
+
+o - Executive summary : 
+The part titled "Executive Summary" is not a summary here:  it just talks about general principles. The summary should **briefly** summarize the report (from problem to main conclusion). Reading it should provide the reader with the gist of the work. You do not state the objective (comparing manual and automatic from the point of view of mpg, **not** just "find out which model fits the dataset best"), nor any related conclusion, so the reader is forced to read on if he wishes any information, without knowing what is the question nor how you will proceed.
+
+o - Length : 
+The whole report should be two pages long. A report should not flood the reader with all the details (even if they are somewhat important). This forces us to just tell the reader what is important, and disregard the rest.
+
+o - Exploratory analysis
+This part is missing. you only put in the appendix a boxplot comparing manual to automatic, but you do **not** use it as a support for modelling, even if you finally base your conclusion solely on a t-test based on it. See, for example, Wikipedia:  "Exploratory data analysis (EDA) is an approach to analyzing data sets to summarize their main characteristics, often with visual methods. A statistical model can be used or not, but primarily EDA is for seeing what the data can tell us beyond the formal modeling or hypothesis testing task. Exploratory data analysis was promoted by John Tukey to encourage statisticians to explore the data, and possibly formulate hypotheses that could lead to new data collection and experiments."
+ ==> you could, by displaying the data in different ways, find ideas about how to model it (what predictors, interaction ?). Yes, you display a pair plot, but you do not use it...
+
+
+o - Analysis : 
+I completely disagree with most of your analysis.
+
++-+-+ Model selection: You can't use ANOVA the way you did: you find that the best models is the one with all the predictors, yet **all** the coefficients of that model are not significantly different from zero: the model simply can't be valid. Afterwards, you use ANOVA again to compare "mpg ~ am" to "mpg ~ am + cyl + hp + wt", and you conclude that "cyl, disp, hp and wt ara all significant predictors". I disagree. first disp does not appear anywhere. Second, the test just tells you that the "mpg ~ am + cyl + hp + wt" is better than the other(am only). You must still check each regressor for significance. Moreover, the coefficient of the variable of interest (am) is not significant in this model, so you should conclude from this model that theree is no significant influence of am at all on mpg (which is not true...) and you conclude the reverse (which is true, but not consistent with this model).
+
++-+-+ "Residual and Diagnostic plots": you do these things, but It seems to me you do not really use them: 
+residuals plots are there to verify the basic regression assumptions and check for patterns (residuals correlation with predictors, correlation with themselves, changing variance, non-normality...) for example, it seems to me  in your "scale-location" diagnostic plot that the residuals variance is increasing with fitted values (follow the red smoother). Then you check for influential points (that's ok), but you just conclude "our top 3 leverage value cars matches with the results in the residual plots. From this, we confirm that our model fit is correct". Sorry, but this does'nt confirm anything of the sort. It just tells you that there are indeed influential points (Chrysler Imperial), and that you have to make up your mind about removing them or not.
+
++-+-+ "Inference": You include here your t-test about the difference of means between automatic and manual. Ok, but this is very far from the question. There could be that difference in means, but still could be a different, or even opposite effect of the variable 'am'. See the video week 3 "adjustment examples" (https://www.coursera.org/learn/regression-models/lecture/hspP4/adjustment-examples)
+by inference, the subject meant "inference about your regression coefficients".
+
+
+o - Conclusion : 
+As said before, your conclusion is based solely on your boxplot and t-test. I still think this is not pertinent, and ignores most of what we learned in this class. 
+
+
+Overall, I believe that as you did not get pertinent information from your linear models, you had to resort to a cruder approach, and hoped for the best. Understandable, but not successful here.
+
+Best regards.
+
+
+
+

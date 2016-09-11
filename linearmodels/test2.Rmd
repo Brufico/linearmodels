@@ -1,0 +1,28 @@
+---
+title: "test2"
+author: "Bruno Fischer Colonimos"
+date: "19 août 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+Using the model to address the question
+=======================================
+
+### Principle {-}
+* The model equation is: $mpg =  \beta_0 + \beta_{am} am + \beta_{hp} hp + \beta_{wt} wt + \beta_{am:wt} am \cdot wt$ ;  where $\beta_0$ is the intercept and $\beta_x$ is the coefficient of x, computed from the sample. Thus, this general equation can be written as:
+
+
+* if am = 1 (manual),     $mpg_1 =  (\beta_0 + \beta_{am}) + \beta_{hp} hp + (\beta_{wt} + \beta_{am:wt}) wt$
+
+* if am = 0 (automatic),   $mpg_0 =  \beta_0 + \beta_{hp} hp + \beta_{wt} wt$
+ 
+Thus the difference between manual and automatic is $\Delta = mpg_1 - mpg_0 = \beta_{am} + \beta_{am:wt} wt$
+
+So manual and automatic gearbox are equivalent when $\Delta$ = 0, that is: $wt = wt_0 = -\frac{\beta_{am}}{\beta_{am:wt}}$ and the slope of the difference $\Delta$ is $\beta_{am:wt}$, i.e. a variation of weight of 1000 pounds increases $\Delta$ by $\beta_{am:wt}$.
+

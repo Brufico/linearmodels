@@ -1,0 +1,22 @@
+
+# Old data
+http://www.un.org/millenniurngoals/pdf/MDG_FS_l_EN.pdf
+http://apps.who.int/gho/athena/data/GHQ/WHOSIS 000008.csv?profile=text&filter=COUNTRY:;SEX:
+
+# Download and exploration file
+
+package UsingR (galton)
+
+R Markdown : automatice numbering of figures, and reference to these figures (and notes)
+
+Help: pale Rstudio ????
+gilespie add-on roxygen ###
+
+Regression with intercept = 00000
+
+==========================================================================
+
+how to fraction in latex
+
+
+
